@@ -1,0 +1,181 @@
+---
+title: "15_compare2westra"
+output:
+  html_document: default
+html_notebook: default
+---
+  
+```{r,message=FALSE, warning=FALSE}
+#read in diff chr results
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(xtable)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+```
+
+### prep Westra et al. results
+```{r}
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/"
+ncbi.dir <- my.dir %&% "NCBI_Gene_Summaries/paper_figures_2018-10-26/"
+wres <- fread(my.dir %&% "Westra_results/2012-12-21-TransEQTLsFDR0.5_hg19.txt",sep="\t")
+wb <- fread(ncbi.dir %&% "TableS1_WHLBLD_results_2018-10-29.txt")
+mt <- fread(ncbi.dir %&% "TableS2_MultiXcan_results_2018-10-29.txt")
+```
+
+### how many overlapping target genes?
+```{r}
+#how many MT targets in wres (FDR<0.5)?
+table(mt$obsname %in% wres$Westra.GENEname)
+table(mt$obsname %in% wres$Westra.GENEname)/length(mt$obsname)
+
+#how many WB targets in wres (FDR<0.5)?
+table(wb$obsname %in% wres$Westra.GENEname)
+table(wb$obsname %in% wres$Westra.GENEname)/length(wb$obsname)
+
+length(unique(wres$Westra.GENEname))
+length(unique(mt$obsgene))
+length(unique(wb$obsgene))
+
+#how many unique MT targets in wres (FDR<0.5)?
+table(unique(mt$obsname) %in% wres$Westra.GENEname)
+table(unique(mt$obsname) %in% wres$Westra.GENEname)/length(unique(mt$obsname))
+
+#how many unique WB targets in wres (FDR<0.5)?
+table(unique(wb$obsname) %in% wres$Westra.GENEname)
+table(unique(wb$obsname) %in% wres$Westra.GENEname)/length(unique(wb$obsname))
+
+#Westra FDR<0.05
+wres05 <- dplyr::filter(wres,Westra.FDR<0.05)
+dim(wres05)
+#how many unique MT targets in wres (FDR<0.05)?
+table(unique(mt$obsname) %in% wres05$Westra.GENEname)
+table(unique(mt$obsname) %in% wres05$Westra.GENEname)/length(unique(mt$obsname))
+
+#how many unique WB targets in wres (FDR<0.05)?
+table(unique(wb$obsname) %in% wres05$Westra.GENEname)
+table(unique(wb$obsname) %in% wres05$Westra.GENEname)/length(unique(wb$obsname))
+```
+
+
+### compare Westra et al. eQTLs to multi-tissue trans-PrediXcan results
+```{r}
+#join if chromosomes match
+wresmt <- mutate(wres,Westra.GENEchr=as.character(Westra.GENEchr))
+chrmatch <- inner_join(wresmt,mt,c("Westra.SNPchr"="predChr","Westra.GENEchr"="obsChr"))
+#filter by position
+posmatch <- dplyr::filter(chrmatch,Westra.SNPpos>predS1-1e6 & Westra.SNPpos < predS2+1e6 & Westra.GENEpos > obsS1-1e6 & Westra.GENEpos < obsS2+1e6)
+#filter by target genes matching
+genematch <- dplyr::filter(posmatch,Westra.GENEname == obsname) %>% arrange(FHS_FDR) %>% mutate(Westra.log10P=ifelse(Westra.P<1e-30,30,-log10(Westra.P)),transpx.log10P=ifelse(FHS_Pval<1e-30,30,-log10(FHS_Pval)))
+#get number of Westra eQTLs that match trans-px gene pairs with FDR<0.05
+print(dim(genematch)[1])
+
+#filter by unique trans-px gene pairs with FDR<0.05
+unique_genematch <- genematch[!(duplicated(genematch$predgene) & duplicated(genematch$obsgene)),]
+print(dim(unique_genematch)[1])
+
+ggplot(genematch,aes(x=Westra.log10P,y=transpx.log10P)) + geom_point(alpha=0.4) + xlab("Westra et al. trans-eQTL -log10(P)") + ylab("FHS (multi-tissue) trans-prediXcan -log10(P)") + geom_smooth(method='lm')
+summary(lm(data=genematch,transpx.log10P~Westra.log10P))
+
+topmatches <- dplyr::filter(unique_genematch,FHS_FDR<0.05) %>% mutate(tissue="FHSobs_v_multiTISSUEpred")
+#print(topmatches)
+write.table(topmatches, ncbi.dir %&% "Westra_rep_trans-diffChrs_FHSobs_v_multiTISSUEpred_FDR0.05_" %&% date %&% ".txt",quote=F,row.names=F)
+toptable <- dplyr::select(topmatches,eQTL=Westra.SNP,eGene=Westra.GENEname,`eQTL P`=Westra.P,`eQTL FDR`=Westra.FDR,`trans-acting gene`=predname,`gene pair P`=FHS_Pval,`gene pair FDR`=FHS_FDR)
+print(xtable(toptable,digits=-1),include.rownames=FALSE)
+
+```
+
+### compare Westra et al. eQTLs to WHLBLD trans-PrediXcan results
+```{r}
+#join if chromosomes match
+chrmatch <- inner_join(wres,wb,c("Westra.SNPchr"="predChr","Westra.GENEchr"="obsChr"))
+#filter by position
+posmatch <- dplyr::filter(chrmatch,Westra.SNPpos>predS1-1e6 & Westra.SNPpos < predS2+1e6 & Westra.GENEpos > obsS1-1e6 & Westra.GENEpos < obsS2+1e6)
+#filter by target genes matching
+genematch <- dplyr::filter(posmatch,Westra.GENEname == obsname) %>% arrange(FHS_FDR) %>% mutate(Westra.log10P=ifelse(Westra.P<1e-30,30,-log10(Westra.P)),transpx.log10P=ifelse(FHS_pval<1e-30,30,-log10(FHS_pval)))
+#get number of Westra eQTLs that match trans-px gene pairs with FDR<0.05
+print(dim(genematch)[1])
+
+#filter by unique trans-px gene pairs with FDR<0.05
+unique_genematch <- genematch[!(duplicated(genematch$predgene) & duplicated(genematch$obsgene)),]
+print(dim(unique_genematch)[1])
+
+ggplot(genematch,aes(x=Westra.log10P,y=transpx.log10P)) + geom_point(alpha=0.4) + xlab("Westra et al. trans-eQTL -log10(P)") + ylab("FHS (WHLBLD) trans-prediXcan -log10(P)") + geom_smooth(method='lm')
+summary(lm(data=genematch,transpx.log10P~Westra.log10P))
+
+topmatches <- dplyr::filter(unique_genematch,FHS_FDR<0.05) %>% mutate(tissue="FHSobs_v_multiTISSUEpred")
+#print(topmatches)
+write.table(topmatches, ncbi.dir %&% "Westra_rep_trans-diffChrs_FHSobs_v_GTExWHLBLDpred_FDR0.05_" %&% date %&% ".txt",quote=F,row.names=F)
+toptable <- dplyr::select(topmatches,eQTL=Westra.SNP,eGene=Westra.GENEname,`eQTL P`=Westra.P,`eQTL FDR`=Westra.FDR,`trans-acting gene`=predname,`gene pair P`=FHS_pval,`gene pair FDR`=FHS_FDR)
+print(xtable(toptable,digits=-1),include.rownames=FALSE)
+
+```
+
+### compare Westra et al. eQTLs (FDR < 0.05) to WHLBLD trans-PrediXcan results - keep
+```{r}
+#join if chromosomes match
+chrmatch <- inner_join(wres05,wb,c("Westra.SNPchr"="predChr","Westra.GENEchr"="obsChr"))
+#filter by position
+posmatch <- dplyr::filter(chrmatch,Westra.SNPpos>predS1-1e6 & Westra.SNPpos < predS2+1e6 & Westra.GENEpos > obsS1-1e6 & Westra.GENEpos < obsS2+1e6)
+#filter by target genes matching
+genematch <- dplyr::filter(posmatch,Westra.GENEname == obsname) %>% arrange(FHS_FDR) %>% mutate(Westra.log10P=ifelse(Westra.P<1e-30,30,-log10(Westra.P)),transpx.log10P=ifelse(FHS_pval<1e-30,30,-log10(FHS_pval)))
+#get number of Westra eQTLs that match trans-px gene pairs with FDR<0.05
+print(dim(genematch)[1])
+
+#filter by unique trans-px gene pairs with FDR<0.05
+unique_genematch <- genematch[!(duplicated(genematch$predgene) & duplicated(genematch$obsgene)),]
+print(dim(unique_genematch)[1])
+
+ggplot(genematch,aes(x=Westra.log10P,y=transpx.log10P)) + geom_point(alpha=0.4) + xlab("Westra et al. trans-eQTL -log10(P)") + ylab("FHS (WHLBLD) trans-prediXcan -log10(P)") + geom_smooth(method='lm')
+summary(lm(data=genematch,transpx.log10P~Westra.log10P))
+
+topmatches <- dplyr::filter(unique_genematch,FHS_FDR<0.05) %>% mutate(tissue="FHSobs_v_multiTISSUEpred")
+#print(topmatches)
+write.table(topmatches, ncbi.dir %&% "Westra_rep_trans_FDR0.05-diffChrs_FHSobs_v_GTExWHLBLDpred_FDR0.05_" %&% date %&% ".txt",quote=F,row.names=F)
+toptable <- dplyr::select(topmatches,eQTL=Westra.SNP,eGene=Westra.GENEname,`eQTL P`=Westra.P,`eQTL FDR`=Westra.FDR,`trans-acting gene`=predname,`gene pair P`=FHS_pval,`gene pair FDR`=FHS_FDR)
+print(xtable(toptable,digits=-1),include.rownames=FALSE)
+
+```
+
+### compare Westra et al. eQTLs (FDR<0.05) to multi-tissue trans-PrediXcan results - keep
+```{r}
+#join if chromosomes match
+wresmt <- mutate(wres05,Westra.GENEchr=as.character(Westra.GENEchr))
+chrmatch <- inner_join(wresmt,mt,c("Westra.SNPchr"="predChr","Westra.GENEchr"="obsChr"))
+#filter by position
+posmatch <- dplyr::filter(chrmatch,Westra.SNPpos>predS1-1e6 & Westra.SNPpos < predS2+1e6 & Westra.GENEpos > obsS1-1e6 & Westra.GENEpos < obsS2+1e6)
+#filter by target genes matching
+genematch <- dplyr::filter(posmatch,Westra.GENEname == obsname) %>% arrange(FHS_FDR) %>% mutate(Westra.log10P=ifelse(Westra.P<1e-30,30,-log10(Westra.P)),transpx.log10P=ifelse(FHS_Pval<1e-30,30,-log10(FHS_Pval)))
+#get number of Westra eQTLs that match trans-px gene pairs with FDR<0.05
+print(dim(genematch)[1])
+
+#filter by unique trans-px gene pairs with FDR<0.05
+unique_genematch <- genematch[!(duplicated(genematch$predgene) & duplicated(genematch$obsgene)),]
+print(dim(unique_genematch)[1])
+
+ggplot(genematch,aes(x=Westra.log10P,y=transpx.log10P)) + geom_point(alpha=0.4) + xlab("Westra et al. trans-eQTL -log10(P)") + ylab("FHS (multi-tissue) trans-prediXcan -log10(P)") + geom_smooth(method='lm')
+summary(lm(data=genematch,transpx.log10P~Westra.log10P))
+
+topmatches <- dplyr::filter(unique_genematch,FHS_FDR<0.05) %>% mutate(tissue="FHSobs_v_multiTISSUEpred")
+#print(topmatches)
+write.table(topmatches, ncbi.dir %&% "Westra_rep_trans_FDR0.05-diffChrs_FHSobs_v_multiTISSUEpred_FDR0.05_" %&% date %&% ".txt",quote=F,row.names=F)
+toptable <- dplyr::select(topmatches,eQTL=Westra.SNP,eGene=Westra.GENEname,`eQTL P`=Westra.P,`eQTL FDR`=Westra.FDR,`trans-acting gene`=predname,`gene pair P`=FHS_Pval,`gene pair FDR`=FHS_FDR)
+print(xtable(toptable,digits=-1),include.rownames=FALSE)
+
+```
+
+### Of all tested obsgene (targets), how many are targets in Westra?
+```{r}
+annot <- fread(my.dir %&% "obsFHSexp/gene_annotated_ids.tsv")
+obslist <-  fread(my.dir %&% "multi-transpx_results/results_allgenes/results_PCs/FHS_tested_obsgene_list.txt")
+obstested <- left_join(obslist,annot,by=c("obsgene"="ENSEMBL"))
+
+#Westra FDR<0.05
+wres05 <- dplyr::filter(wres,Westra.FDR<0.05)
+dim(wres05)
+#how many unique FHS tested targets in wres (FDR<0.05)?
+table(unique(obstested$SYMBOL) %in% wres05$Westra.GENEname)
+table(unique(obstested$SYMBOL) %in% wres05$Westra.GENEname)/length(unique(obstested$SYMBOL))
+
+```

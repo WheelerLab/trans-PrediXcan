@@ -1,0 +1,138 @@
+---
+title: "Fig4_mtpx_tile_plots_color_by_MR_rep"
+author: "Heather E. Wheeler"
+date: '`r Sys.time()`'
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+```
+
+
+```{r,fig.width=10,fig.height=10, message=FALSE}
+my.dir <- '/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/paper_figures_2018-10-26/'
+
+mtres <- fread(my.dir %&% 'TableS2_MultiXcan_results_2018-10-29.txt')
+#rm version number from ensembl id
+
+mtres <- mutate(mtres,neglog=ifelse(FHS_Pval<1e-50,50,-log10(FHS_Pval)),obsChr=ifelse(obsChr=="X",23,obsChr)) %>% mutate(obsChr=as.integer(obsChr))
+sorted <- arrange(mtres,predChr,predS1,obsChr,obsS1)
+#arrange by obs (target) for hvec
+resobssort <- dplyr::arrange(mtres,obsChr,obsS1,predChr,predS1)
+```
+
+
+- Try with chromosomal coordinates instead of gene order
+```{r,fig.width=7,fig.height=7, message=FALSE}
+#get chromosomal coordinates
+d <- sorted
+predticks = NULL
+predlastbase=0
+d$predpos=NA
+for (i in unique(d$predChr)) {
+  if (i==1) {
+  	d[d$predChr==i, ]$predpos=d[d$predChr==i, ]$predS1
+  } else {
+  	predlastbase=predlastbase+tail(subset(d,predChr==i-1)$predS1, 1)
+  	d[d$predChr==i, ]$predpos=d[d$predChr==i, ]$predS1+predlastbase
+  }
+#  predticks=c(predticks, d[d$predChr==i, ]$predpos[floor(length(d[d$predChr==i, ]$predpos)/2)+1])
+  predticks = c(predticks, predlastbase)
+}
+predticks = c(predticks, max(d$predpos))
+#get chromosomal coordinates
+e <- resobssort
+obsticks = NULL
+obslastbase=0
+e$obspos=NA
+for (i in unique(e$obsChr)) {
+  if (i==1) {
+  	e[e$obsChr==i, ]$obspos=e[e$obsChr==i, ]$obsS1
+  } else {
+  	obslastbase=obslastbase+tail(subset(e,obsChr==i-1)$obsS1, 1)
+  	e[e$obsChr==i, ]$obspos=e[e$obsChr==i, ]$obsS1+obslastbase
+  }
+  obsticks = c(obsticks,obslastbase)
+}
+obsticks = c(obsticks,max(e$obspos))
+esubset <- dplyr::select(e,obsgene,predgene,obspos)
+d <- left_join(d,esubset,by=c("obsgene","predgene"))
+
+#get position for chr labels
+predchrticks <- c()
+for(i in 2:length(predticks)){
+  midpt <- mean(c(predticks[i-1],predticks[i]))
+  predchrticks <- c(predchrticks,midpt)
+}
+obschrticks <- c()
+for(i in 2:length(obsticks)){
+  midpt <- mean(c(obsticks[i-1],obsticks[i]))
+  obschrticks <- c(obschrticks,midpt)
+}
+
+#color by reactome generic transcription pathway, from FUMA results
+txpath <- c("ZNF248", "ZNF25", "ZNF33A", "ZNF37A", "ZNF33B", "ZNF33B", "ZNF485", "NRBF2", "ZNF641", "ZNF200", "ZNF263", "NCOR1", "ZNF624", "MED24", "THRA", "ZNF519", "NR2C2AP", "ZNF566", "ZNF382", "ZNF567", "ZNF420", "ZNF585A", "ZNF585B", "ZNF569", "ZNF570", "ZNF540", "ZNF571", "ZNF607", "ZNF649", "ZNF613", "ZNF432", "ZNF320", "ZNF416", "ZNF418", "ZNF446", "CCNT2", "ZNF141", "MAML3", "ZNF184", "ZNF12")
+sorted2 <- mutate(d,txpath=ifelse(sorted$predname %in% txpath,'yes','no'))
+
+```
+
+- color by master regulators > 10 target genes
+```{r, fig.width=7,fig.height=7}
+targetCount <- c()
+for(i in 1:length(sorted2$predgene)){
+  c <- length(grep(sorted2$predgene[i],sorted2$predgene))
+  targetCount <- c(targetCount, c)
+}
+mreg <- cbind(sorted2,targetCount)
+
+#pull one of each MR to label
+mregsub <- dplyr::filter(mreg,(predname=='KERA' & obsname=='HNRNPR') | (predname=='PEX12' & obsname=='ESPN') | (predname=='ARHGEF3' & obsname=='SELP'))
+
+write.table(mreg, my.dir %&% 'Map_gt0.8_and_NA_cross-map_pairs_TableS2_MulTiXcan_results_FHS_and_rep_targetCount_2018-07-22.txt',quote=F,row.names=F)
+
+```
+
+## Fig 4
+- color by replicates in DGN 
+```{r,fig.width=4,fig.height=4}
+repsorted <- mutate(d,repDGN=ifelse(DGN_Pval<0.05,"yes","no"))
+#pull one of each MR to label
+repsub <- dplyr::filter(repsorted,(predname=='KERA' & obsname=='SLC25A24') | (predname=='AP2B1' & obsname=='CTDSPL') | (predname=='ARHGEF3' & obsname=='SELP'))
+
+fig4 <- ggplot(repsorted,aes(x=predpos, y=obspos, size=neglog, color=repDGN)) + 
+  geom_point(shape=21)  +  
+  scale_size_continuous(guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","navy"),na.value="dark gray",guide=FALSE) +
+  geom_hline(yintercept=obsticks,size=0.2) + 
+  geom_vline(xintercept = predticks,size=0.2) + #ggtitle('FHS TissueXcan FDR < 0.05') +
+  xlab('trans-acting gene') + ylab('target gene') + 
+  coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
+  theme_classic(10) + theme(axis.text=element_text(size=8),
+        axis.title=element_text(size=18)) +
+  geom_text_repel(data=repsub,aes(label=predname,size=20,fontface = "bold")) +
+  scale_x_continuous(breaks=predchrticks,labels= c(1:14,"",16,"",18,"",20,"",22)) +
+  scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X")) 
+
+print(fig4)
+
+png(filename=my.dir %&% 'Fig4_mtpx_tile_plots_color_by_MR_rep.png',width = 480, height = 480)
+fig4
+dev.off()
+
+pdf(file=my.dir %&% 'Fig4_mtpx_tile_plots_color_by_MR_rep.pdf',width = 7, height = 7)
+fig4
+dev.off()
+
+tiff(filename=my.dir %&% "Fig4_mtpx_tile_plots_color_by_MR_rep.tiff", width = 7, height = 7, units = 'in', res = 300, compression = 'lzw')
+fig4
+dev.off()
+
+```
+

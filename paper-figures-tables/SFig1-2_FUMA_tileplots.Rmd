@@ -1,0 +1,214 @@
+---
+title: "10_FUMA_val_genes_tileplots"
+author: "Heather E. Wheeler"
+date: '`r Sys.time()`'
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+```
+
+
+```{r,fig.width=10,fig.height=10, message=FALSE}
+my.dir <-  "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/paper_figures_2018-10-26/"
+mtres <- fread(my.dir %&% 'TableS2_MultiXcan_results_2018-10-29.txt')
+#rm version number from ensembl id
+
+mtres <- mutate(mtres,neglog=ifelse(FHS_Pval<1e-50,50,-log10(FHS_Pval)),obsChr=ifelse(obsChr=="X",23,obsChr)) %>% mutate(obsChr=as.integer(obsChr))
+sorted <- arrange(mtres,predChr,predS1,obsChr,obsS1)
+#arrange by obs (target) for hvec
+resobssort <- dplyr::arrange(mtres,obsChr,obsS1,predChr,predS1)
+```
+
+- Try with chromosomal coordinates instead of gene order
+```{r,fig.width=7,fig.height=7, message=FALSE}
+#get chromosomal coordinates
+d <- sorted
+predticks = NULL
+predlastbase=0
+d$predpos=NA
+for (i in unique(d$predChr)) {
+  if (i==1) {
+  	d[d$predChr==i, ]$predpos=d[d$predChr==i, ]$predS1
+  } else {
+  	predlastbase=predlastbase+tail(subset(d,predChr==i-1)$predS1, 1)
+  	d[d$predChr==i, ]$predpos=d[d$predChr==i, ]$predS1+predlastbase
+  }
+#  predticks=c(predticks, d[d$predChr==i, ]$predpos[floor(length(d[d$predChr==i, ]$predpos)/2)+1])
+  predticks = c(predticks, predlastbase)
+}
+predticks = c(predticks, max(d$predpos))
+#get chromosomal coordinates
+e <- resobssort
+obsticks = NULL
+obslastbase=0
+e$obspos=NA
+for (i in unique(e$obsChr)) {
+  if (i==1) {
+  	e[e$obsChr==i, ]$obspos=e[e$obsChr==i, ]$obsS1
+  } else {
+  	obslastbase=obslastbase+tail(subset(e,obsChr==i-1)$obsS1, 1)
+  	e[e$obsChr==i, ]$obspos=e[e$obsChr==i, ]$obsS1+obslastbase
+  }
+  obsticks = c(obsticks,obslastbase)
+}
+obsticks = c(obsticks,max(e$obspos))
+esubset <- dplyr::select(e,obsgene,predgene,obspos)
+d <- left_join(d,esubset,by=c("obsgene","predgene"))
+
+#get position for chr labels
+predchrticks <- c()
+for(i in 2:length(predticks)){
+  midpt <- mean(c(predticks[i-1],predticks[i]))
+  predchrticks <- c(predchrticks,midpt)
+}
+obschrticks <- c()
+for(i in 2:length(obsticks)){
+  midpt <- mean(c(obsticks[i-1],obsticks[i]))
+  obschrticks <- c(obschrticks,midpt)
+}
+
+#only include validated genes (P<0.05 in DGN)
+d <- filter(d,DGN_Pval<0.05)
+```
+
+# Trans-acting pathway enrichment
+## color by GO nucleic acid binding transcription factor activity
+- only validated genes are shown
+```{r,fig.width=5,fig.height=5, message=FALSE}
+txpath <- c("RFX5", "ZNF438", "ZNF641", "ZSCAN10", "ZNF200", "ZNF263", "ZNF174", "TCF25", "GATAD2A", "ZFP14", "ZFP82", "ZNF260", "ZNF382", "ZNF790", "ZNF345", "ZNF829", "ZNF568", "ZNF585A", "ZNF570", "ZNF793", "ZNF540", "ZFP30", "ZNF607", "ZNF573", "ZNF649", "ZNF613", "ZNF132", "TEF", "PHF5A", "ZBTB11", "REST", "CITED2", "PLAGL1", "ZNF12")
+sorted2 <- mutate(d,txpath=ifelse(d$predname %in% txpath,'yes','no'))
+ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
+  geom_point(shape=21)  +  
+  scale_size_continuous(guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","blue"),guide=FALSE) +
+  geom_hline(yintercept=obsticks,size=0.2) + 
+  geom_vline(xintercept = predticks,size=0.2) + ggtitle('A') +
+  xlab('trans-acting gene') + ylab('target gene') + 
+  coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(12) +
+  scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
+  scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
+
+sfig1a <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
+  geom_point(shape=21)  +  
+  scale_size_continuous(guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","blue"),guide=FALSE) +
+  geom_hline(yintercept=obsticks,size=0.2) + 
+  geom_vline(xintercept = predticks,size=0.2) + ggtitle('GO nucleic acid binding transcription factor activity') +
+  xlab('trans-acting gene') + ylab('target gene') + 
+  coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=predname)) + theme_bw(10) +
+  scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
+  scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
+```
+
+
+
+#color by Reactome generic transcription pathway
+```{r,fig.width=5,fig.height=5, message=FALSE}
+txpath <- c("ZNF641", "ZNF200", "ZNF263", "NCOR1", "MED24", "ZNF566", "ZNF382", "ZNF585A", "ZNF569", "ZNF570", "ZNF540", "ZNF607", "ZNF649", "ZNF613", "ZNF12")
+sorted2 <- mutate(d,txpath=ifelse(d$predname %in% txpath,'yes','no'))
+ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
+  geom_point(shape=21)  +  
+  scale_size_continuous(guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","blue"),guide=FALSE) +
+  geom_hline(yintercept=obsticks,size=0.2) + 
+  geom_vline(xintercept = predticks,size=0.2) + ggtitle('Reactome generic transcription pathway') +
+  xlab('trans-acting gene') + ylab('target gene') + 
+  coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(12) +
+  scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
+  scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
+
+sfig1b <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
+  geom_point(shape=21)  +  
+  scale_size_continuous(guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","blue"),guide=FALSE) +
+  geom_hline(yintercept=obsticks,size=0.2) + 
+  geom_vline(xintercept = predticks,size=0.2) + ggtitle('Reactome generic transcription pathway') +
+  xlab('trans-acting gene') + ylab('target gene') + 
+  coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=predname)) + theme_bw(12) +
+  scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
+  scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
+```
+
+# Target Gene Pathway Enrichment
+
+## Color by TF targets (MsigDB c3)	WGGAATGY_TEF1_Q6
+```{r,fig.width=5,fig.height=5, message=FALSE}
+txpath <- c("NID1", "VCL", "PRRG4", "TSPAN9", "PTMS", "DACT1", "SPTB", "ROGDI", "GHRL", "PROK2", "SPARC", "SH3BGRL2", "FBXL13", "TSPAN33")
+sorted2 <- mutate(d,txpath=ifelse(d$obsname %in% txpath,'yes','no'))
+sfig2a <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
+  geom_point(shape=21)  +  
+  scale_size_continuous(guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","purple4"),guide=FALSE) +
+  geom_hline(yintercept=obsticks,size=0.2) + 
+  geom_vline(xintercept = predticks,size=0.2) + ggtitle('TF binding site: WGGAATGY_TEF1_Q6') +
+  xlab('trans-acting gene') + ylab('target gene') + 
+  coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(12) +
+  scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
+  scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
+```
+
+
+## Color by TF targets (MsigDB c3)	PAX8_B
+```{r,fig.width=5,fig.height=5, message=FALSE}
+txpath <- c("TSPAN2", "NRGN", "PPM1A", "ABLIM3", "CALD1", "BNC2")
+sorted2 <- mutate(d,txpath=ifelse(d$obsname %in% txpath,'yes','no'))
+sfig2c <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
+  geom_point(shape=21)  +  
+  scale_size_continuous(guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","purple4"),guide=FALSE) +
+  geom_hline(yintercept=obsticks,size=0.2) + 
+  geom_vline(xintercept = predticks,size=0.2) + ggtitle('TF binding site: PAX8_B') +
+  xlab('trans-acting gene') + ylab('target gene') + 
+  coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(12) +
+  scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
+  scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
+```
+
+
+#SFig 1 top trans-acting pathways
+```{r, fig.width=10,fig.height=5}
+grid.arrange(sfig1a, sfig1b, nrow = 1)
+
+png(filename=my.dir %&% 'SFig1_FUMA-trans.png',width = 600, height = 300)
+grid.arrange(sfig1a, sfig1b, nrow = 1)
+dev.off()
+
+pdf(file=my.dir %&% 'SFig1_FUMA-trans.pdf',width=10,height=5)
+grid.arrange(sfig1a, sfig1b, nrow = 1)
+dev.off()
+
+# tiff(filename=my.dir %&% 'SFig1_FUMA-trans.tiff', width = 6, height = 3, units = 'in', res = 300, compression = 'lzw')
+# grid.arrange(sfig1a, sfig1b, nrow = 1)
+# dev.off()
+```
+
+#SFig 2 top TF targets pathways
+```{r, fig.width=10,fig.height=5}
+grid.arrange(sfig2a, sfig2c, nrow = 1)
+
+png(filename=my.dir %&% 'SFig2_FUMA-targets.png',width = 600, height = 300)
+grid.arrange(sfig2a, sfig2c, nrow = 1)
+dev.off()
+
+pdf(file=my.dir %&% 'SFig2_FUMA-targets.pdf', width=10,height=5)
+grid.arrange(sfig2a, sfig2c, nrow = 1)
+dev.off()
+
+# tiff(filename=my.dir %&% 'SFig2_FUMA-targets.tiff', width = 4, height = 4, units = 'in', res = 300, compression = 'lzw')
+# grid.arrange(sfig2a, sfig2b, sfig2c, sfig2d, nrow = 2)
+# dev.off()
+```

@@ -1,0 +1,81 @@
+---
+title: "14_compare_to_eqtls"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+```{r}
+library(qvalue)
+library(data.table)
+library(dplyr)
+library(xtable)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/"
+ncbi.dir <- my.dir %&% "NCBI_Gene_Summaries/"
+map.dir <- my.dir %&% "hg19_GENCODE19/"
+wb <- fread(ncbi.dir %&% "paper_figures_2018-10-26/TableS1_WHLBLD_results_2018-10-29.txt")
+mt <- fread(ncbi.dir %&% "paper_figures_2018-10-26/TableS2_MultiXcan_results_2018-10-29.txt")
+suspect <- fread("gzcat " %&% ncbi.dir %&% "hgFixed.refSeqSummary_gencode.v19.annotations_suspect_list.txt.gz")
+genemap <- fread("gzcat " %&% map.dir %&% "hg19_gene_mappability.txt.gz") %>% mutate(gene=substr(V1,1,15)) %>% rename(mappability=V2)
+fhseqtl <- fread("gzcat " %&% my.dir %&% "SNP_FHS.meqtl.trans.diffchr.FDR0.05.txt.gz")
+dgneqtl <- fread("gzcat " %&% my.dir %&% "SNP_DGN_prunedFHStrans.meqtl.trans.diffchr.allres.txt.gz")
+```
+
+```{r}
+#get dgn results for top fhs (FDR<0.05) eqtls
+alleqtl <- left_join(fhseqtl,dgneqtl,by=c("snps","gene"))
+```
+
+```{r}
+#how many predixcan targets in eQTL targets?
+#WHLBLD
+table(unique(wb$obsgene) %in% alleqtl$gene)
+table(unique(wb$obsgene) %in% alleqtl$gene)/sum(table(unique(wb$obsgene) %in% alleqtl$gene))
+#MulTiXcan
+table(unique(mt$obsgene) %in% alleqtl$gene)
+table(unique(mt$obsgene) %in% alleqtl$gene)/sum(table(unique(mt$obsgene) %in% alleqtl$gene))
+
+#how many validated targets in eQTL validated targets? (dgn p<0.05)
+wbdgn <- filter(wb,DGN_pval<0.05)
+mtdgn <- filter(mt, DGN_Pval<0.05)
+alldgn <- filter(alleqtl,pvalue.y<0.05)
+table(unique(wbdgn$obsgene) %in% alldgn$gene)
+table(unique(wbdgn$obsgene) %in% alldgn$gene)/sum(table(unique(wbdgn$obsgene) %in% alldgn$gene))
+#MulTiXcan
+table(unique(mtdgn$obsgene) %in% alldgn$gene)
+table(unique(mtdgn$obsgene) %in% alldgn$gene)/sum(table(unique(mtdgn$obsgene) %in% alldgn$gene))
+
+```
+
+```{r}
+#filter out poorly mapped targets
+alleqtl <- left_join(alleqtl,genemap,by='gene')
+filtall <- dplyr::filter(alleqtl,mappability>0.8)
+#filter out NCBI suspect gene summary genes
+filtall <- dplyr::filter(filtall, !(gene %in% substr(suspect$V3,1,15)))
+
+#how many eqtl targets?
+length(unique(filtall$gene))
+#how many fhs eqtls?
+dim(filtall)
+#how many tested in dgn?
+table(!is.na(filtall$pvalue.y))
+#how many P<0.05 in dgn?
+filtalldgn <- dplyr::filter(filtall,pvalue.y<0.05)
+dim(filtalldgn)
+3731/8823
+#unique validated targets
+length(unique(filtalldgn$gene))
+#genes
+28/58
+length(unique(wbdgn$obsgene))
+length(unique(mtdgn$obsgene))
+
+eqtlq <- qvalue(filtall$pvalue.y)
+plot(eqtlq)
+hist(filtall$pvalue.y)
+#pi1
+1 - eqtlq$pi0
+```
+

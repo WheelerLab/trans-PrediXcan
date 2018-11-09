@@ -1,0 +1,116 @@
+---
+title: "Fig5_gene2pheno_qq_plots"
+author: "Heather E. Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(data.table)
+library(knitr)
+library(ggrepel)
+library(readxl)
+library(viridis)
+"%&%" = function(a,b) paste(a,b,sep="")
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/gene2pheno_trans-acting_and_target_genes/"
+summ.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/"
+mt <- fread(summ.dir %&% "paper_figures_2018-10-26/TableS2_MultiXcan_results_2018-10-29.txt")
+transvec <- unique(mt$predgene)
+length(transvec)
+targetvec <- unique(mt$obsgene)
+length(targetvec)
+bkgdvec <- scan(summ.dir %&% "FUMA_newFDR_2018-10-29/Background_trans-acting_list.txt","c")
+length(bkgdvec)
+```
+
+## UK BioBank 
+- 50_Standing_height, n = 500,131
+```{r,fig.width=5,fig.height=4,warning=FALSE}
+bkgduk <- fread("gzcat " %&% my.dir %&% "50_Standing_height_ukbiobank_Px_DGN-WB_results_2018-06-06.txt.gz") %>%
+    arrange(pval) %>% mutate(gene=substr(gene,1,15))
+transpt <- dplyr::filter(bkgduk,gene %in% transvec)
+targetpt <- dplyr::filter(bkgduk,gene %in% targetvec)
+bkgdpt <- dplyr::filter(bkgduk,gene %in% bkgdvec)
+
+#calc expect p dist
+nn <- dim(transpt)[[1]]
+xx =  -log10((1:nn)/(nn+1))
+transpt <- mutate(transpt,exp=xx,obs=-log10(pval),group="trans")
+nn <- dim(targetpt)[[1]]
+xx =  -log10((1:nn)/(nn+1))
+targetpt <- mutate(targetpt,exp=xx,obs=-log10(pval),group="target")
+nn <- dim(bkgdpt)[[1]]
+xx =  -log10((1:nn)/(nn+1))
+bkgdpt <- mutate(bkgdpt,exp=xx,obs=-log10(pval),group="bkgd")
+  
+all <- rbind(transpt,targetpt,bkgdpt)
+
+#cap "50_Standing_height" at 30
+all30 <- mutate(all,obs=ifelse(obs>30,30,obs))
+
+eff30 <- arrange(all30, effect_size)
+
+all30_uk <- mutate(all30,cohort="UK Biobank Height")
+```
+
+## GIANT height 
+- n = 253,288
+- EUR
+```{r,fig.width=5,fig.height=4,warning=FALSE}
+pheno <- "GIANT_HEIGHT"
+giant <- fread("gzcat " %&% my.dir %&% "GIANT_HEIGHT_meta-gwas_Px_DGN-WB_results_2018-06-07.txt.gz") %>% 
+  arrange(pval) %>% mutate(gene=substr(gene,1,15))
+
+transpt <- dplyr::filter(giant,gene %in% transvec) %>% arrange(pval)
+targetpt <- dplyr::filter(giant,gene %in% targetvec) %>% arrange(pval)
+bkgdpt <- dplyr::filter(giant,gene %in% bkgdvec)
+
+#calc expect p dist
+nn <- dim(transpt)[[1]]
+xx =  -log10((1:nn)/(nn+1))
+transpt <- mutate(transpt,exp=xx,obs=-log10(pval),group="trans")
+nn <- dim(targetpt)[[1]]
+xx =  -log10((1:nn)/(nn+1))
+targetpt <- mutate(targetpt,exp=xx,obs=-log10(pval),group="target")
+nn <- dim(bkgdpt)[[1]]
+xx =  -log10((1:nn)/(nn+1))
+bkgdpt <- mutate(bkgdpt,exp=xx,obs=-log10(pval),group="bkgd")
+  
+all <- rbind(transpt,targetpt,bkgdpt)
+
+#cap at 30
+all30 <- mutate(all,obs=ifelse(obs>30,30,obs))
+
+eff30 <- arrange(all30, effect_size)
+
+all30_g <- mutate(all30,cohort="GIANT Height")
+```
+
+#### Paper Figure
+```{r,fig.width=7.5,fig.height=4}
+b30 <- rbind(all30_uk,all30_g) %>% 
+  mutate(group=factor(group,levels=c("bkgd","trans","target"),labels=c("background","trans-acting","target")))
+fig4 <- ggplot(b30,aes(x=exp,y=obs,col=group)) + geom_point(size=1,shape=1) + facet_wrap(~cohort) +
+  geom_abline(slope=1,intercept = 0) + labs(x=expression(paste('Expected ',-log[10],' ',P)),
+  y=expression(paste('Observed ',-log[10],' ',P)),col="Gene Group") +
+  theme(plot.title = element_text(size = 10)) + #scale_color_viridis(discrete=TRUE,option="plasma",end=0.8) + 
+  theme_bw(12) + theme(legend.position = c(0.01,0.99),legend.justification = c(0,1),legend.text=element_text(size=8),legend.title=element_text(size=8)) + scale_color_manual(values=c("gray","navy","orange"))
+print(fig4)
+
+table(filter(b30,cohort=="GIANT Height")$group)
+table(filter(b30,cohort=="UK Biobank Height")$group)
+
+png(filename=summ.dir %&% 'paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.png',width = 600, height = 300)
+fig4
+dev.off()
+
+pdf(file=summ.dir %&% 'paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.pdf',width = 6, height = 3)
+fig4
+dev.off()
+
+tiff(filename=summ.dir %&% "paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.tiff", width = 6, height = 3, units = 'in', res = 300, compression = 'lzw')
+fig4
+dev.off()
+```

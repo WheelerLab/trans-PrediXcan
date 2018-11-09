@@ -1,0 +1,43 @@
+---
+title: "Fig2_FHS_v_DGN_stat_plots"
+author: "Heather E. Wheeler"
+date: '`r Sys.time()`'
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(data.table)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+```
+
+```{r,fig.width=5,fig.height=5}
+my.dir <- '/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/'
+paper.dir <- my.dir %&% "paper_figures_2018-10-26/"
+wb <- fread(paper.dir %&% "TableS1_WHLBLD_results_2018-10-29.txt")
+ggplot(wb, aes(x=FHS_stat,y=DGN_stat)) + geom_point() + 
+  geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + theme_bw(12) + 
+  xlab('FHS test statistic (FDR < 0.05)') + ylab('DGN test statistic')
+
+fig1 <- ggplot(wb, aes(x=FHS_stat,y=DGN_stat)) + geom_point(shape=1) + coord_cartesian(xlim=c(-17,17),ylim=c(-17,17)) +
+  geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + theme_bw(12) + 
+  xlab('FHS test statistic (FDR < 0.05)') + ylab('DGN test statistic')
+
+print(fig1)
+
+png(filename=paper.dir %&% 'Fig2_FHS_v_DGN_stat_plot.png')
+fig1
+dev.off()
+
+pdf(file=paper.dir %&% 'Fig2_FHS_v_DGN_stat_plot.pdf',width = 3.75, height = 3.75)
+fig1
+dev.off()
+
+tiff(filename=paper.dir %&% "Fig2_FHS_v_DGN_stat_plot.tiff", width = 3.75, height = 3.75, units = 'in', res = 300, compression = 'lzw')
+fig1
+dev.off()
+```

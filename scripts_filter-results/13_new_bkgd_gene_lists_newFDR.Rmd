@@ -1,0 +1,52 @@
+---
+title: "13_new_bkgd_gene_lists_newFDR"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(data.table)
+"%&%" = function(a,b) paste(a,b,sep="")
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/"
+map.dir <- my.dir %&% "hg19_GENCODE19/"
+summ.dir <- my.dir %&% "NCBI_Gene_Summaries/"
+rm.dir <- my.dir %&% "rm_bad_mapping_genes/"
+```
+
+### read-in previous lists
+```{r}
+fp_tested <- fread(rm.dir %&% "FUMA_2018-07-27/FHS_tested_predgene_list.txt",header=F)
+fo_tested <- fread(rm.dir %&% "FUMA_2018-07-27/FHS_tested_obsgene_list.txt",header=F)
+dp_tested <- fread(rm.dir %&% "FUMA_2018-07-27/DGN_tested_predgene_list.txt",header=F)
+do_tested <- fread(rm.dir %&% "FUMA_2018-07-27/DGN_tested_obsgene_list.txt",header=F)
+```
+
+### read-in suspect summary genes
+```{r}
+suspect <- fread("gzcat " %&% summ.dir %&% "hgFixed.refSeqSummary_gencode.v19.annotations_suspect_list.txt.gz",sep="\t")
+suspect <- mutate(suspect,gene=substr(V3,1,15))
+dim(suspect)
+```
+
+### get full background for FUMA
+- remove genes with suspect NCBI summaries:
+`grep retro | grep pseudogene | grep paralog`
+```{r}
+#FHS pred
+fpmap <- filter(fp_tested,!(V1 %in% suspect$gene))
+write(fpmap$V1,summ.dir %&% "FUMA_newFDR_2018-10-29/FHS_tested_predgene_list.txt",ncolumns = 1)
+#FHS obs
+fomap <- filter(fo_tested,!(V1 %in% suspect$gene))
+write(fomap$V1,summ.dir %&% "FUMA_newFDR_2018-10-29/FHS_tested_obsgene_list.txt",ncolumns = 1)
+#DGN pred
+dpmap <- filter(dp_tested,!(V1 %in% suspect$gene))
+write(dpmap$V1,summ.dir %&% "FUMA_newFDR_2018-10-29/DGN_tested_predgene_list.txt",ncolumns = 1)
+write(dpmap$V1,summ.dir %&% "FUMA_newFDR_2018-10-29/Background_trans-acting_list.txt",ncolumns = 1)
+#DGN obs
+domap <- filter(do_tested,!(V1 %in% suspect$gene))
+write(domap$V1,summ.dir %&% "FUMA_newFDR_2018-10-29/DGN_tested_obsgene_list.txt",ncolumns = 1)
+write(domap$V1,summ.dir %&% "FUMA_newFDR_2018-10-29/Background_target_list.txt",ncolumns = 1)
+```

@@ -1,0 +1,59 @@
+---
+title: "11_pi1_calc_Table_1"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+```{r}
+library(qvalue)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/paper_figures_2018-10-26/"
+
+mt <- fread(my.dir %&% "TableS2_MultiXcan_results_2018-10-29.txt")
+wb <- fread(my.dir %&% "TableS1_WHLBLD_results_2018-10-29.txt")
+```
+
+## MulTiXcan
+```{r,fig.width=6,fig.height=6}
+#num FHS FDR < 0.05
+dim(mt)
+#num FHS tested
+#zcat rm_suspect_NCBIgenes_Results_rm_bad_map_multi-trans-px_FHS_diff_chrs_overall_results_2017-12-11.txt.gz |wc
+#204944305
+#num DGN P < 0.05
+dim(filter(mt,DGN_Pval<0.05))
+#num DGN tested
+table(is.na(mt$DGN_Pval))
+hist(mt$DGN_Pval)
+summary(mt$DGN_Pval)
+mtq <- qvalue(mt$DGN_Pval)
+plot(mtq)
+#pi1
+1 - mtq$pi0
+```
+
+## PrediXcan WHLBLD
+```{r,fig.width=6,fig.height=6}
+#num FHS FDR < 0.05
+dim(wb)
+#num FHS tested
+#zcat rm_suspect_NCBIgenes_Results_rm_bad_map_FHSobs_v_GTExWBpred.meqtl.trans.diffchr.allres.txt.gz |wc
+#24180873
+#num DGN P < 0.05
+dim(filter(wb,DGN_pval<0.05))
+#num DGN tested
+table(is.na(wb$DGN_pval))
+hist(wb$DGN_pval)
+summary(wb$DGN_pval)
+#set NA to 1
+wb <- mutate(wb,DGN_pval=ifelse(is.na(DGN_pval),1,DGN_pval))
+summary(wb$DGN_pval)
+wbq <- qvalue(wb$DGN_pval)
+plot(wbq)
+#pi1
+1 - wbq$pi0
+```

@@ -1,0 +1,24 @@
+---
+title: "12_make_FUMA_genelists_rm_suspect_summary_genes_newFDR.Rmd"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(data.table)
+"%&%" = function(a,b) paste(a,b,sep="")
+
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/"
+
+oklist <- fread(my.dir %&% "paper_figures_2018-10-26/TableS2_MultiXcan_results_2018-10-29.txt")
+
+okval <- dplyr::filter(oklist,DGN_Pval<0.05)
+dim(okval)
+
+write.table(unique(okval$predgene), my.dir %&% "FUMA_newFDR_2018-10-29/FHS_FDR0.05_DGN_P0.05_no-cross-map_no-suspect-summary_2018-10-29_predgene_list.txt",quote = FALSE, row.names = FALSE)
+write.table(unique(okval$obsgene), my.dir %&% "FUMA_newFDR_2018-10-29/FHS_FDR0.05_DGN_P0.05_no-cross-map_no-suspect-summary_2018-10-29_obsgene_list.txt",quote = FALSE, row.names = FALSE)
+
+```
