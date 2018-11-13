@@ -191,9 +191,9 @@ pdf(file=my.dir %&% 'SFig1_FUMA-trans.pdf',width=10,height=5)
 grid.arrange(sfig1a, sfig1b, nrow = 1)
 dev.off()
 
-# tiff(filename=my.dir %&% 'SFig1_FUMA-trans.tiff', width = 6, height = 3, units = 'in', res = 300, compression = 'lzw')
-# grid.arrange(sfig1a, sfig1b, nrow = 1)
-# dev.off()
+tiff(filename=my.dir %&% 'SFig1_FUMA-trans.tiff', width = 6, height = 3, units = 'in', res = 300, compression = 'lzw')
+grid.arrange(sfig1a, sfig1b, nrow = 1)
+dev.off()
 ```
 
 #SFig 2 top TF targets pathways
@@ -208,7 +208,7 @@ pdf(file=my.dir %&% 'SFig2_FUMA-targets.pdf', width=10,height=5)
 grid.arrange(sfig2a, sfig2c, nrow = 1)
 dev.off()
 
-# tiff(filename=my.dir %&% 'SFig2_FUMA-targets.tiff', width = 4, height = 4, units = 'in', res = 300, compression = 'lzw')
-# grid.arrange(sfig2a, sfig2b, sfig2c, sfig2d, nrow = 2)
-# dev.off()
+tiff(filename=my.dir %&% 'SFig2_FUMA-targets.tiff', width = 6, height = 3, units = 'in', res = 300, compression = 'lzw')
+grid.arrange(sfig2a, sfig2c, nrow = 1)
+dev.off()
 ```
