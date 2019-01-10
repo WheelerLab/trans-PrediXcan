@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jan 08 14:47:20 2019
-#pull all SNPs from predicted expression models and check if they're trans-eQTLs in eQTLGen
+#pull all SNPs from predicted expression models and check if they're cis- or trans-eQTLs in eQTLGen
 @author: Angela Andaleon (aandaleon@luc.edu)
 """
 
@@ -52,6 +52,7 @@ WHLBLD = pd.read_csv("TableS1_WHLBLD_results_2018-10-29.csv")
 WHLBLD.columns = ['predgene', 'predname', 'predChr', 'predS1', 'predS2', 'obsgene', 'obsname', 'obsChr', 'obsS1', 'obsS2', 'FHS_stat', 'FHS_beta', 'FHS_pval', 'FHS_FDR', 'DGN_stat', 'DGN_beta', 'DGN_pval']
 WHLBLD_trans_eQTL = pd.merge(WHLBLD, db_SNPs_trans_eQTLGen_obsgene_predgene, how = "left", on = ["predgene", "obsgene"]).drop_duplicates() #force trans-eQTLGen results to order of WHLBLD
 WHLBLD_trans_eQTL["trans_eQTL_in_eQTLGen"].fillna("No", inplace = True) #if there's no matching in trans-eQTLGen
+WHLBLD_trans_eQTL = WHLBLD_trans_eQTL.drop(labels = "rsid", axis = 1).drop_duplicates() #drop SNP column and collapse duplicates
 WHLBLD_trans_eQTL.to_csv("WHLBLD_trans_eQTL.csv", index = False, na_rep = "NA")
 print("Completed writing WHLBLD trans-PX and trans-eQTLGen overlapping results to WHLBLD_trans_eQTL.csv")
 
@@ -60,6 +61,7 @@ MultiXcan = pd.read_csv("TableS2_MultiXcan_results_2018-10-29.csv")
 MultiXcan.columns = ['predgene', 'predname', 'predChr', 'predS1', 'predS2', 'obsgene', 'obsname', 'obsChr', 'obsS1', 'obsS2', 'FHS_stat', 'FHS_beta', 'FHS_pval', 'FHS_FDR', 'DGN_stat', 'DGN_beta', 'DGN_pval']
 MultiXcan_trans_eQTL = pd.merge(MultiXcan, db_SNPs_trans_eQTLGen_obsgene_predgene, how = "left", on = ["predgene", "obsgene"]).drop_duplicates() #force trans-eQTLGen results to order of WHLBLD
 MultiXcan_trans_eQTL["trans_eQTL_in_eQTLGen"].fillna("No", inplace = True) #if there's no matching in trans-eQTLGen
+MultiXcan_trans_eQTL = MultiXcan_trans_eQTL.drop(labels = "rsid", axis = 1).drop_duplicates() #drop SNP column and collapse duplicates
 MultiXcan_trans_eQTL.to_csv("MultiXcan_trans_eQTL.csv", index = False, na_rep = "NA")
 print("Completed writing MultiXcan trans-PX and trans-eQTLGen overlapping results to MultiXcan_trans_eQTL.csv")
 
