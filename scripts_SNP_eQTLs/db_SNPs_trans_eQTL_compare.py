@@ -43,9 +43,11 @@ db_SNPs_trans_eQTLGen_obsgene_predgene = db_SNPs_trans_eQTLGen_obsgene_predgene.
 db_SNPs_trans_eQTLGen_obsgene_predgene["trans_eQTL_in_eQTLGen"] = "Yes"
 
 #list of all cis-eQTLs in eQTLGen w/ FDR < 0.05
-cis_eQTL = set(np.loadtxt("cis-eQTLGen_FDR_0.05_SNPs_only.txt", dtype = str))
+cis_eQTL = pd.read_csv("cis-eQTLGen_P_FDR.txt", delim_whitespace = True, header = None)
+cis_eQTL.columns = ["eQTLGen_cis_P", "rsid", "predgene", "eQTLGen_cis_FDR"] #predgene = eQTLGen_cis_gene
+cis_eQTL_set = set(cis_eQTL["rsid"])
 db_SNPs_trans_eQTLGen_obsgene_predgene["trans_eQTL_also_cis_eQTL"] = "No"
-db_SNPs_trans_eQTLGen_obsgene_predgene.loc[db_SNPs_trans_eQTLGen_obsgene_predgene.rsid.isin(cis_eQTL), ['trans_eQTL_also_cis_eQTL']] = "Yes" #Add another column in TableS1 and TableS2 - is the trans-eQTL you found (keep this column) also a cis-eQTL?
+db_SNPs_trans_eQTLGen_obsgene_predgene.loc[db_SNPs_trans_eQTLGen_obsgene_predgene.rsid.isin(cis_eQTL_set), ['trans_eQTL_also_cis_eQTL']] = "Yes" #Add another column in TableS1 and TableS2 - is the trans-eQTL you found (keep this column) also a cis-eQTL?
 
 #subset to WHLBLD results
 WHLBLD = pd.read_csv("TableS1_WHLBLD_results_2018-10-29.csv")
@@ -78,6 +80,7 @@ WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen.rsid_pos <= (WHLBLD_match_eQTLGen.
 WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen.rsid_pos >= (WHLBLD_match_eQTLGen.predS2 + 1000000), ['rsid_pos']] = None
 WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen[np.isfinite(WHLBLD_match_eQTLGen['rsid_pos'])] #keep SNPs that pass
 WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen[["eQTLGen_P", "eQTLGen_FDR", "rsid", "predChr", "rsid_pos", "eQTLGen_gene_chr", "eQTLGen_gene_pos", "eQTLGen_gene_symbol", "eQTLGen_FDR", "predgene", "predname", "predS1", "obsgene", "obsname", "obsS1", "obsS2", "FHS_pval", "FHS_FDR", "DGN_pval"]] #keep important cols.
+WHLBLD_match_eQTLGen = pd.merge(WHLBLD_match_eQTLGen, cis_eQTL, on = ["rsid", "predgene"])
 WHLBLD_match_eQTLGen.to_csv("WHLBLD_match_eQTLGen.csv", index = False)
 
 MultiXcan_match_eQTLGen = pd.merge(MultiXcan, trans_eQTLGen_FDR_05, on = ["predChr", "obsgene"])
@@ -85,6 +88,7 @@ MultiXcan_match_eQTLGen.loc[MultiXcan_match_eQTLGen.rsid_pos <= (MultiXcan_match
 MultiXcan_match_eQTLGen.loc[MultiXcan_match_eQTLGen.rsid_pos >= (MultiXcan_match_eQTLGen.predS2 + 1000000), ['rsid_pos']] = None
 MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen[np.isfinite(MultiXcan_match_eQTLGen['rsid_pos'])] #keep SNPs that pass
 MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen[["eQTLGen_P", "eQTLGen_FDR", "rsid", "predChr", "rsid_pos", "eQTLGen_gene_chr", "eQTLGen_gene_pos", "eQTLGen_gene_symbol", "eQTLGen_FDR", "predgene", "predname", "predS1", "obsgene", "obsname", "obsS1", "obsS2", "FHS_pval", "FHS_FDR", "DGN_pval"]]
+MultiXcan_match_eQTLGen = pd.merge(MultiXcan_match_eQTLGen, cis_eQTL, on = ["rsid", "predgene"])
 MultiXcan_match_eQTLGen.to_csv("MultiXcan_match_eQTLGen.csv", index = False)
 print("Completed comparing trans-acting/target gene pairs b/w trans-PX and trans-eQTLGen.")
 
