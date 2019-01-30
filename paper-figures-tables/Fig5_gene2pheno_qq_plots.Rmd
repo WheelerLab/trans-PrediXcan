@@ -99,7 +99,14 @@ pdf(file=summ.dir %&% 'paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.pdf',w
 fig4
 dev.off()
 
-tiff(filename=summ.dir %&% "paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.tiff", width = 10, height = 5, units = 'in', res = 300, compression = 'lzw')
+fig4 <- ggplot(b30,aes(x=exp,y=obs,col=group)) + geom_point(size=0.7,shape=1) + 
+  facet_wrap(~cohort, scales = "free",nrow=2) +
+  geom_abline(slope=1,intercept = 0) + labs(x=expression(paste('Expected ',-log[10],' ',P)),
+  y=expression(paste('Observed ',-log[10],' ',P)),col="Gene Group") +
+  theme(plot.title = element_text(size = 10)) + #scale_color_viridis(discrete=TRUE,option="plasma",end=0.8) + 
+  theme_bw(8) + theme(legend.position = "bottom",legend.text=element_text(size=6),legend.title=element_text(size=6)) + scale_color_manual(values=c("gray","navy","orange"))
+
+tiff(filename=summ.dir %&% "paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.tiff", width = 6, height = 3.5, units = 'in', res = 300, compression = 'lzw')
 fig4
 dev.off()
 ```

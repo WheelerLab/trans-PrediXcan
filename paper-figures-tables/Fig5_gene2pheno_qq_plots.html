@@ -120,7 +120,7 @@ $(document).ready(function () {
 
 <h1 class="title toc-ignore">Fig5_gene2pheno_qq_plots</h1>
 <h4 class="author"><em>Heather E. Wheeler</em></h4>
-<h4 class="date"><em>2019-01-21 15:42:54</em></h4>
+<h4 class="date"><em>2019-01-30 14:28:57</em></h4>
 
 </div>
 
@@ -326,7 +326,14 @@ fig4
 dev.off()</code></pre>
 <pre><code>## quartz_off_screen 
 ##                 2</code></pre>
-<pre class="r"><code>tiff(filename=summ.dir %&amp;% &quot;paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.tiff&quot;, width = 10, height = 5, units = 'in', res = 300, compression = 'lzw')
+<pre class="r"><code>fig4 &lt;- ggplot(b30,aes(x=exp,y=obs,col=group)) + geom_point(size=0.7,shape=1) + 
+  facet_wrap(~cohort, scales = &quot;free&quot;,nrow=2) +
+  geom_abline(slope=1,intercept = 0) + labs(x=expression(paste('Expected ',-log[10],' ',P)),
+  y=expression(paste('Observed ',-log[10],' ',P)),col=&quot;Gene Group&quot;) +
+  theme(plot.title = element_text(size = 10)) + #scale_color_viridis(discrete=TRUE,option=&quot;plasma&quot;,end=0.8) + 
+  theme_bw(8) + theme(legend.position = &quot;bottom&quot;,legend.text=element_text(size=6),legend.title=element_text(size=6)) + scale_color_manual(values=c(&quot;gray&quot;,&quot;navy&quot;,&quot;orange&quot;))
+
+tiff(filename=summ.dir %&amp;% &quot;paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.tiff&quot;, width = 6, height = 3.5, units = 'in', res = 300, compression = 'lzw')
 fig4
 dev.off()</code></pre>
 <pre><code>## quartz_off_screen 
