@@ -1,0 +1,95 @@
+---
+title: "16_master_regulators"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+```{r}
+library(qvalue)
+library(data.table)
+library(dplyr)
+library(xtable)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/paper_figures_2018-10-26/"
+map.dir <- my.dir %&% "hg19_GENCODE19/"
+
+mt <- fread(my.dir %&% "TableS2_MultiXcan_results_2018-10-29.txt")
+```
+
+```{r}
+transcounts <- as.data.frame(table(mt$predname))
+hist(transcounts$Freq,n=30,xlab="number target genes",main="Distribution of target gene counts per trans-acting gene")
+tcgt1 <- dplyr::filter(transcounts,Freq>2)
+hist(tcgt1$Freq,n=30,xlab="number target genes",main="Distribution of target gene counts per trans-acting gene\nwith 3 or more targets")
+#trans-acting genes total
+dim(transcounts)
+#trans-acting w 1 target
+dim(dplyr::filter(transcounts,Freq==1))
+dim(dplyr::filter(transcounts,Freq==1))/dim(transcounts)
+#trans-acting w <=3 targets
+dim(dplyr::filter(transcounts,Freq<=3))
+dim(dplyr::filter(transcounts,Freq<=3))/dim(transcounts)
+#trans-acting w >5 targets
+dim(dplyr::filter(transcounts,Freq>=5))
+dim(dplyr::filter(transcounts,Freq>=5))/dim(transcounts)
+#trans-acting w >10 targets
+dim(dplyr::filter(transcounts,Freq>=10))
+dim(dplyr::filter(transcounts,Freq>=10))/dim(transcounts)
+#trans-acting w >50 targets
+dim(dplyr::filter(transcounts,Freq>=50))
+dim(dplyr::filter(transcounts,Freq>=50))/dim(transcounts)
+
+mr <- dplyr::filter(transcounts,Freq>=50) %>% arrange(desc(Freq))
+colnames(mr) = c("gene","FHS Target Count")
+mr
+#get full res of master regs
+master <- dplyr::filter(mt,predname %in% mr$gene)
+#count n tested in DGN
+dgntested <- dplyr::filter(master,!is.na(DGN_Pval))
+dgnt <- as.data.frame(table(dgntested$predname)) %>% arrange(desc(Freq))
+colnames(dgnt) <- c("gene","DGN Tested")
+#count DGN P < 0.05
+dgnrep <- dplyr::filter(master,DGN_Pval<0.05)
+dgnr <- as.data.frame(table(dgnrep$predname)) %>% arrange(desc(Freq))
+colnames(dgnr) <- c("gene", "DGN P<0.05")
+#get master reg positions
+pos <- dplyr::select(master,gene=predname,predChr,predS1)
+pos <- pos[!duplicated(pos),]
+
+tab2 <- left_join(pos,mr,by='gene')
+tab2 <- left_join(tab2,dgnt,by='gene')
+tab2 <- left_join(tab2,dgnr,by='gene')
+tab2 <- mutate(tab2,`Prop.P<0.05`=signif(`DGN P<0.05`/`DGN Tested`,2)) %>% arrange(desc(`FHS Target Count`))
+tab2 <- rename(tab2,`trans-acting Gene`=gene,`Chr`=predChr,Position=predS1)
+tab2
+print(xtable(tab2), include.rownames=FALSE)
+
+```
+
+### same w/MR >10
+```{r}
+mr <- dplyr::filter(transcounts,Freq>=10) %>% arrange(desc(Freq))
+colnames(mr) = c("gene","FHS Target Count")
+mr
+#get full res of master regs
+master <- dplyr::filter(mt,predname %in% mr$gene)
+#count n tested in DGN
+dgntested <- dplyr::filter(master,!is.na(DGN_Pval))
+dgnt <- as.data.frame(table(dgntested$predname)) %>% arrange(desc(Freq))
+colnames(dgnt) <- c("gene","DGN Tested")
+#count DGN P < 0.05
+dgnrep <- dplyr::filter(master,DGN_Pval<0.05)
+dgnr <- as.data.frame(table(dgnrep$predname)) %>% arrange(desc(Freq))
+colnames(dgnr) <- c("gene", "DGN P<0.05")
+#get master reg positions
+pos <- dplyr::select(master,gene=predname,predChr,predS1)
+pos <- pos[!duplicated(pos),]
+
+tab2 <- left_join(pos,mr,by='gene')
+tab2 <- left_join(tab2,dgnt,by='gene')
+tab2 <- left_join(tab2,dgnr,by='gene')
+tab2 <- arrange(tab2, predChr, predS1) %>% mutate(`Prop.P<0.05`=signif(`DGN P<0.05`/`DGN Tested`,2))
+tab2 <- rename(tab2,`trans-acting Gene`=gene,`Chr`=predChr,Position=predS1)
+tab2
+```

@@ -1,0 +1,53 @@
+---
+title: "SFig_adjR2_MT_v_WB"
+author: "Heather E. Wheeler"
+date: '`r Sys.time()`'
+output: html_document
+---
+
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/"
+```
+
+```{r,fig.width=4, fig.height=4}
+allres <- data.frame(matrix(ncol = 10, nrow = 0))
+colnames(allres) <- c("obsgene","predgene","WB_adjRsq","WB_Pval","MT_adjRsq","MT_Pval","an_Fstat","an_Pval","logWB","logMT")
+
+for(i in c(0:100)){
+  ipad <- str_pad(i,3,pad="0")
+  res <- fread(my.dir %&% "compare_WB_MT_models/WB_v_MT_anova_FHS_list" %&% ipad %&% "_2019-01-15.txt")
+  res <- res[complete.cases(res),]
+  #I messed up the headers in 19_compare_WB_to_MT.R, fix here
+  colnames(res) <- c("obsgene","predgene","WB_adjRsq","WB_Pval","MT_adjRsq","MT_Pval","an_Fstat","an_Pval")
+  res <- mutate(res, logWB=ifelse(WB_Pval < 1e-30, 30, -1*log10(WB_Pval)), logMT=ifelse(MT_Pval < 1e-30, 30, -1*log10(MT_Pval)))
+  allres <- rbind(allres, res)
+}
+```
+
+```{r}
+t.test(allres$WB_Pval,allres$MT_Pval)
+t.test(allres$WB_Pval,allres$MT_Pval)$p.value
+summary(allres)
+ggplot(allres, aes(x=logWB, y=logMT)) + geom_bin2d() + geom_abline(slope=1,intercept = 0)
+
+t.test(allres$WB_adjRsq,allres$MT_adjRsq)
+t.test(allres$WB_adjRsq,allres$MT_adjRsq)$p.value
+sfig <- ggplot(allres, aes(x=WB_adjRsq, y=MT_adjRsq)) + geom_bin2d() + geom_abline(slope=1,intercept = 0) + labs(x=expression(paste("Whole Blood adjusted ", R^2)),y=expression(paste("Multi-Tissue adjusted ", R^2))) + 
+  theme_bw(14)
+
+print(sfig)
+
+png(filename=my.dir %&% 'SFig_adjR2_MT_v_WB.png',width = 600, height = 400)
+sfig
+dev.off()
+
+pdf(file=my.dir %&% 'SFig_adjR2_MT_v_WB.pdf', width=6,height=4)
+sfig
+dev.off()
+```

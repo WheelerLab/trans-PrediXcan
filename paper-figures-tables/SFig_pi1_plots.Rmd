@@ -1,0 +1,68 @@
+---
+title: "SFig_pi1_plots"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+```{r}
+library(qvalue)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/paper_figures_2018-10-26/"
+
+mt <- fread(my.dir %&% "TableS2_MultiXcan_results_2018-10-29.txt")
+wb <- fread(my.dir %&% "TableS1_WHLBLD_results_2018-10-29.txt")
+```
+## PrediXcan WHLBLD
+```{r,fig.width=6,fig.height=6}
+#num FHS FDR < 0.05
+dim(wb)
+#num FHS tested
+#zcat rm_suspect_NCBIgenes_Results_rm_bad_map_FHSobs_v_GTExWBpred.meqtl.trans.diffchr.allres.txt.gz |wc
+#24180873
+#num DGN P < 0.05
+dim(filter(wb,DGN_pval<0.05))
+#num DGN tested
+table(is.na(wb$DGN_pval))
+sfiga <- hist(wb$DGN_pval,main="Whole Blood Replication Distribution",xlab="DGN P-value",xlim=c(0,1),n=10)
+print(sfiga)
+summary(wb$DGN_pval)
+#set NA to 1
+wb <- mutate(wb,DGN_pval=ifelse(is.na(DGN_pval),1,DGN_pval))
+summary(wb$DGN_pval)
+wbq <- qvalue(wb$DGN_pval)
+plot(wbq)
+#pi1
+1 - wbq$pi0
+```
+## MulTiXcan
+```{r,fig.width=6,fig.height=6}
+#num FHS FDR < 0.05
+dim(mt)
+#num FHS tested
+#zcat rm_suspect_NCBIgenes_Results_rm_bad_map_multi-trans-px_FHS_diff_chrs_overall_results_2017-12-11.txt.gz |wc
+#204944305
+#num DGN P < 0.05
+dim(filter(mt,DGN_Pval<0.05))
+#num DGN tested
+table(is.na(mt$DGN_Pval))
+sfigc <- hist(mt$DGN_Pval,main="Multi-tissue Replication Distribution",xlab="DGN P-value")
+print(sfigc)
+summary(mt$DGN_Pval)
+mtq <- qvalue(mt$DGN_Pval)
+plot(mtq)
+#pi1
+1 - mtq$pi0
+```
+
+
+
+```{r,fig.width=6,fig.height=6}
+#grid.arrange(sfiga,  plot(wbq), sfigc,  plot(mtq), nrow = 2)
+#above doesn't work for qvalue::plot() function
+#instead, combined plots in pptx and exported as pdf
+```

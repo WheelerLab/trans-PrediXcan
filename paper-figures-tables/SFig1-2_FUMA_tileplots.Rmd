@@ -93,7 +93,7 @@ ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) +
   geom_vline(xintercept = predticks,size=0.2) + ggtitle('A') +
   xlab('trans-acting gene') + ylab('target gene') + 
   coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
-  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(8) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_classic(12) +
   scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
   scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
 
@@ -105,7 +105,7 @@ sfig1a <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) +
   geom_vline(xintercept = predticks,size=0.2) + ggtitle('GO nucleic acid binding transcription factor activity') +
   xlab('trans-acting gene') + ylab('target gene') + 
   coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
-  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=predname)) + theme_bw(8) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=predname)) + theme_classic(10) +
   scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
   scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
 ```
@@ -124,7 +124,7 @@ ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) +
   geom_vline(xintercept = predticks,size=0.2) + ggtitle('Reactome generic transcription pathway') +
   xlab('trans-acting gene') + ylab('target gene') + 
   coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
-  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(8) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_classic(12) +
   scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
   scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
 
@@ -136,7 +136,7 @@ sfig1b <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) +
   geom_vline(xintercept = predticks,size=0.2) + ggtitle('Reactome generic transcription pathway') +
   xlab('trans-acting gene') + ylab('target gene') + 
   coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
-  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=predname)) + theme_bw(8) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=predname)) + theme_classic(12) +
   scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
   scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
 ```
@@ -150,12 +150,12 @@ sorted2 <- mutate(d,txpath=ifelse(d$obsname %in% txpath,'yes','no'))
 sfig2a <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
   geom_point(shape=21)  +  
   scale_size_continuous(guide=FALSE) +
-  scale_colour_manual(values=c("dark gray","purple4"),guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","red3"),guide=FALSE) +
   geom_hline(yintercept=obsticks,size=0.2) + 
   geom_vline(xintercept = predticks,size=0.2) + ggtitle('TF binding site: WGGAATGY_TEF1_Q6') +
   xlab('trans-acting gene') + ylab('target gene') + 
   coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
-  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(8) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_classic(12) +
   scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
   scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
 ```
@@ -168,12 +168,12 @@ sorted2 <- mutate(d,txpath=ifelse(d$obsname %in% txpath,'yes','no'))
 sfig2c <- ggplot(sorted2,aes(x=predpos, y=obspos, size=neglog, color=txpath)) + 
   geom_point(shape=21)  +  
   scale_size_continuous(guide=FALSE) +
-  scale_colour_manual(values=c("dark gray","purple4"),guide=FALSE) +
+  scale_colour_manual(values=c("dark gray","red3"),guide=FALSE) +
   geom_hline(yintercept=obsticks,size=0.2) + 
   geom_vline(xintercept = predticks,size=0.2) + ggtitle('TF binding site: PAX8_B') +
   xlab('trans-acting gene') + ylab('target gene') + 
   coord_cartesian(xlim=c(predticks[1],predticks[23]),ylim=c(obsticks[1],obsticks[24]),expand=FALSE) +
-  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_bw(8) +
+  geom_text_repel(data=dplyr::filter(sorted2,txpath=='yes'),aes(label=paste(predname,":",obsname,sep=""))) + theme_classic(12) +
   scale_x_continuous(breaks=predchrticks,labels= c(1:16,"",18,"",20,"",22)) +
   scale_y_continuous(breaks=obschrticks,labels=c(1:16,"",18,"",20,"",22,"X"))
 ```
@@ -191,9 +191,9 @@ pdf(file=my.dir %&% 'SFig1_FUMA-trans.pdf',width=10,height=5)
 grid.arrange(sfig1a, sfig1b, nrow = 1)
 dev.off()
 
-tiff(filename=my.dir %&% 'SFig1_FUMA-trans.tiff', width = 8, height = 4, units = 'in', res = 300, compression = 'lzw')
-grid.arrange(sfig1a, sfig1b, nrow = 1)
-dev.off()
+# tiff(filename=my.dir %&% 'SFig1_FUMA-trans.tiff', width = 6, height = 3, units = 'in', res = 300, compression = 'lzw')
+# grid.arrange(sfig1a, sfig1b, nrow = 1)
+# dev.off()
 ```
 
 #SFig 2 top TF targets pathways
@@ -208,7 +208,7 @@ pdf(file=my.dir %&% 'SFig2_FUMA-targets.pdf', width=10,height=5)
 grid.arrange(sfig2a, sfig2c, nrow = 1)
 dev.off()
 
-tiff(filename=my.dir %&% 'SFig2_FUMA-targets.tiff', width = 8, height = 4, units = 'in', res = 300, compression = 'lzw')
-grid.arrange(sfig2a, sfig2c, nrow = 1)
-dev.off()
+# tiff(filename=my.dir %&% 'SFig2_FUMA-targets.tiff', width = 4, height = 4, units = 'in', res = 300, compression = 'lzw')
+# grid.arrange(sfig2a, sfig2b, sfig2c, sfig2d, nrow = 2)
+# dev.off()
 ```

@@ -21,11 +21,13 @@ paper.dir <- my.dir %&% "paper_figures_2018-10-26/"
 wb <- fread(paper.dir %&% "TableS1_WHLBLD_results_2018-10-29.txt")
 ggplot(wb, aes(x=FHS_stat,y=DGN_stat)) + geom_point() + 
   geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + theme_bw(12) + 
-  xlab('FHS test statistic (FDR < 0.05)') + ylab('DGN test statistic')
+  xlab('FHS t-statistic (FDR < 0.05)') + ylab('DGN t-statistic')
 
 fig1 <- ggplot(wb, aes(x=FHS_stat,y=DGN_stat)) + geom_point(shape=1) + coord_cartesian(xlim=c(-17,17),ylim=c(-17,17)) +
   geom_hline(yintercept = 0) + geom_vline(xintercept = 0) + theme_bw(12) + 
-  xlab('FHS test statistic (FDR < 0.05)') + ylab('DGN test statistic')
+  xlab('FHS t-statistic (FDR < 0.05)') + ylab('DGN t-statistic')
+
+cor.test(wb$FHS_stat,wb$DGN_stat)
 
 print(fig1)
 

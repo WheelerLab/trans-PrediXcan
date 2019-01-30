@@ -1,0 +1,53 @@
+---
+title: "18_circular_pair_correlations_MT"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/circular_pairs/"
+
+#wb <- fread("gzcat " %&% my.dir %&% "circular_pairs_p05_multi-trans-px_FHS_diff_chrs_overall_results_2017-12-11.txt.gz")
+wb <- read.table(my.dir %&% "circular_pairs_p05_multi-trans-px_FHS_diff_chrs_overall_results_2017-12-11.txt.gz", nrows=1e7, header=TRUE)
+```
+
+```{r}
+#calc cor if p<0.05 in one pair
+wb05 <- dplyr::filter(wb, pval1 < 0.05 | pval2 < 0.05)
+dim(wb05)
+wb05 <- mutate(wb05,sigpair=ifelse(pval1<pval2,-1*log10(pval1),-1*log10(pval2)), otherpair=ifelse(pval1<pval2,-1*log10(pval2),-1*log10(pval1)))
+cor.test(wb05$sigpair, wb05$otherpair)
+cor.test(wb05$sigpair, wb05$otherpair, method='s')
+
+#calc cor if p<e-4 in one pair
+wbe4 <- dplyr::filter(wb05, pval1 < 0.0001 | pval2 < 0.0001)
+dim(wbe4)
+wbe4 <- mutate(wbe4,sigpair=ifelse(pval1<pval2,-1*log10(pval1),-1*log10(pval2)), otherpair=ifelse(pval1<pval2,-1*log10(pval2),-1*log10(pval1)))
+cor.test(wbe4$sigpair, wbe4$otherpair)
+cor.test(wbe4$sigpair, wbe4$otherpair, method='s')
+
+ggplot(wb05, aes(x=sigpair, y=otherpair)) + geom_bin2d() + xlab('A -> B (-log10 P)') +  ylab('B -> A (-log10 P)')+ geom_smooth()
+
+ggplot(wb05, aes(x=sigpair, y=otherpair)) + geom_density2d() + xlab('A -> B (-log10 P)') +  ylab('B -> A (-log10 P)') +
+  coord_cartesian(xlim=c(0,3), ylim=c(0,3))
+
+ggplot(wbe4, aes(x=sigpair, y=otherpair)) + geom_bin2d() + xlab('A -> B (-log10 P)') +  ylab('B -> A (-log10 P)') + geom_smooth() 
+
+ggplot(wbe4, aes(x=sigpair, y=otherpair)) + geom_density2d() + xlab('A -> B (-log10 P)') +  ylab('B -> A (-log10 P)') +
+  coord_cartesian(xlim=c(0,6), ylim=c(0,6))
+```
+
+```{r}
+#How many P<0.0001 in both pairs
+wbe4 <- dplyr::filter(wb05, pval1 < 0.0001 & pval2 < 0.0001)
+dim(wbe4)
+
+#How many P<0.05 in both pairs
+wb05 <- dplyr::filter(wb, pval1 < 0.05 & pval2 < 0.05)
+dim(wb05)
+```

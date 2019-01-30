@@ -1,0 +1,71 @@
+---
+title: "21_compare_WB_to_MT_plots"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+```{r}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/Volumes/im-lab/nas40t2/hwheeler/trans-px/NCBI_Gene_Summaries/"
+```
+
+```{r,fig.width=4, fig.height=4}
+mediandf <- data.frame(matrix(ncol = 2, nrow = 0))
+colnames(mediandf) <- c("WB_Med_P", "MT_Med_P")
+allres <- data.frame(matrix(ncol = 10, nrow = 0))
+colnames(allres) <- c("obsgene","predgene","WB_adjRsq","WB_Pval","MT_adjRsq","MT_Pval","an_Fstat","an_Pval","logWB","logMT")
+
+for(i in c(0:100)){
+  ipad <- str_pad(i,3,pad="0")
+  res <- fread(my.dir %&% "compare_WB_MT_models/WB_v_MT_anova_FHS_list" %&% ipad %&% "_2019-01-15.txt")
+  res <- res[complete.cases(res),]
+  #I messed up the headers in 19_compare_WB_to_MT.R, fix here
+  colnames(res) <- c("obsgene","predgene","WB_adjRsq","WB_Pval","MT_adjRsq","MT_Pval","an_Fstat","an_Pval")
+  res <- mutate(res, logWB=ifelse(WB_Pval < 1e-30, 30, -1*log10(WB_Pval)), logMT=ifelse(MT_Pval < 1e-30, 30, -1*log10(MT_Pval)))
+  print(ggplot(res, aes(x=logWB, y=logMT)) + geom_bin2d() + geom_abline(slope=1,intercept = 0))
+  
+  #boxplot comparing pvals
+  print(t.test(res$WB_Pval,res$MT_Pval))
+  boxres <- dplyr::select(res, `Whole Blood`=WB_Pval, `Multi-tissue`=MT_Pval)
+  medres <- data.frame(WB_Med_P=median(boxres$`Whole Blood`), MT_Med_P=median(boxres$`Multi-tissue`))
+  mediandf <- rbind(mediandf, medres)
+  boxres <- melt(boxres)
+  print(ggplot(boxres, aes(x=variable,y=value)) + geom_boxplot() + labs(x="Model",y="P value"))
+  allres <- rbind(allres, res)
+}
+```
+
+```{r}
+t.test(mediandf$WB_Med_P,mediandf$MT_Med_P)
+allboxmed <- melt(mediandf)
+ggplot(allboxmed, aes(x=variable,y=value)) + geom_boxplot() + labs(x="Model",y="P value")
+
+t.test(allres$WB_Pval,allres$MT_Pval)
+t.test(allres$WB_Pval,allres$MT_Pval)$p.value
+grabP <- dplyr::select(allres, WB_Pval, MT_Pval)
+boxP <- melt(grabP)
+ggplot(boxP, aes(x=variable,y=value)) + geom_boxplot() + labs(x="Model",y="P value")
+summary(allres)
+ggplot(allres, aes(x=logWB, y=logMT)) + geom_bin2d() + geom_abline(slope=1,intercept = 0)
+
+t.test(allres$WB_adjRsq,allres$MT_adjRsq)
+t.test(allres$WB_adjRsq,allres$MT_adjRsq)$p.value
+ggplot(allres, aes(x=WB_adjRsq, y=MT_adjRsq)) + geom_bin2d() + geom_abline(slope=1,intercept = 0) + labs(x=expression(paste("Whole Blood adjusted ", R^2)),y=expression(paste("Multi-Tissue adjusted ", R^2)))
+grabR2 <- dplyr::select(allres, WB_adjRsq, MT_adjRsq)
+boxR2 <- melt(grabR2)
+ggplot(boxR2, aes(x=variable,y=value)) + geom_boxplot() + labs(x="Model",y="P value")
+
+rsq01 <- dplyr::filter(allres, WB_adjRsq > 0.01 | MT_adjRsq > 0.01)
+ggplot(rsq01, aes(x=WB_adjRsq, y=MT_adjRsq)) + geom_bin2d() + geom_abline(slope=1,intercept = 0) + labs(x=expression(paste("Whole Blood adjusted ", R^2)),y=expression(paste("Multi-Tissue adjusted ", R^2)))
+grabRsq01 <- dplyr::select(rsq01, WB_adjRsq, MT_adjRsq)
+boxRsq01 <- melt(grabRsq01)
+ggplot(boxRsq01, aes(x=variable,y=value)) + geom_boxplot() + labs(x="Model",y="P value") 
+t.test(rsq01$WB_adjRsq,rsq01$MT_adjRsq)
+t.test(rsq01$WB_adjRsq,rsq01$MT_adjRsq)$p.value
+summary(rsq01)
+```

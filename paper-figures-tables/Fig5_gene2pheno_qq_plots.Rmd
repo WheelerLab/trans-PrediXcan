@@ -25,92 +25,81 @@ bkgdvec <- scan(summ.dir %&% "FUMA_newFDR_2018-10-29/Background_trans-acting_lis
 length(bkgdvec)
 ```
 
-## UK BioBank 
-- 50_Standing_height, n = 500,131
-```{r,fig.width=5,fig.height=4,warning=FALSE}
-bkgduk <- fread("gzcat " %&% my.dir %&% "50_Standing_height_ukbiobank_Px_DGN-WB_results_2018-06-06.txt.gz") %>%
-    arrange(pval) %>% mutate(gene=substr(gene,1,15))
-transpt <- dplyr::filter(bkgduk,gene %in% transvec)
-targetpt <- dplyr::filter(bkgduk,gene %in% targetvec)
-bkgdpt <- dplyr::filter(bkgduk,gene %in% bkgdvec)
-
-#calc expect p dist
-nn <- dim(transpt)[[1]]
-xx =  -log10((1:nn)/(nn+1))
-transpt <- mutate(transpt,exp=xx,obs=-log10(pval),group="trans")
-nn <- dim(targetpt)[[1]]
-xx =  -log10((1:nn)/(nn+1))
-targetpt <- mutate(targetpt,exp=xx,obs=-log10(pval),group="target")
-nn <- dim(bkgdpt)[[1]]
-xx =  -log10((1:nn)/(nn+1))
-bkgdpt <- mutate(bkgdpt,exp=xx,obs=-log10(pval),group="bkgd")
+##Function to define gene groups
+```{r}
+defgroups <- function(file, pheno){
+  bkgduk <- fread("gzcat " %&% my.dir %&% file) %>%
+      arrange(pval) %>% mutate(gene=substr(gene,1,15))
+  transpt <- dplyr::filter(bkgduk,gene %in% transvec)
+  targetpt <- dplyr::filter(bkgduk,gene %in% targetvec)
+  bkgdpt <- dplyr::filter(bkgduk,gene %in% bkgdvec)
   
-all <- rbind(transpt,targetpt,bkgdpt)
-
-#cap "50_Standing_height" at 30
-all30 <- mutate(all,obs=ifelse(obs>30,30,obs))
-
-eff30 <- arrange(all30, effect_size)
-
-all30_uk <- mutate(all30,cohort="UK Biobank Height")
+  #calc expect p dist
+  nn <- dim(transpt)[[1]]
+  xx =  -log10((1:nn)/(nn+1))
+  transpt <- mutate(transpt,exp=xx,obs=-log10(pval),group="trans")
+  nn <- dim(targetpt)[[1]]
+  xx =  -log10((1:nn)/(nn+1))
+  targetpt <- mutate(targetpt,exp=xx,obs=-log10(pval),group="target")
+  nn <- dim(bkgdpt)[[1]]
+  xx =  -log10((1:nn)/(nn+1))
+  bkgdpt <- mutate(bkgdpt,exp=xx,obs=-log10(pval),group="bkgd")
+    
+  all <- rbind(transpt,targetpt,bkgdpt)
+  
+  #cap -log10P at 30
+  all30 <- mutate(all,obs=ifelse(obs>30,30,obs))
+  
+  eff30 <- arrange(all30, effect_size)
+  
+  all30 <- mutate(all30,cohort=pheno)
+  return(all30)
+}
 ```
 
-## GIANT height 
-- n = 253,288
-- EUR
-```{r,fig.width=5,fig.height=4,warning=FALSE}
-pheno <- "GIANT_HEIGHT"
-giant <- fread("gzcat " %&% my.dir %&% "GIANT_HEIGHT_meta-gwas_Px_DGN-WB_results_2018-06-07.txt.gz") %>% 
-  arrange(pval) %>% mutate(gene=substr(gene,1,15))
-
-transpt <- dplyr::filter(giant,gene %in% transvec) %>% arrange(pval)
-targetpt <- dplyr::filter(giant,gene %in% targetvec) %>% arrange(pval)
-bkgdpt <- dplyr::filter(giant,gene %in% bkgdvec)
-
-#calc expect p dist
-nn <- dim(transpt)[[1]]
-xx =  -log10((1:nn)/(nn+1))
-transpt <- mutate(transpt,exp=xx,obs=-log10(pval),group="trans")
-nn <- dim(targetpt)[[1]]
-xx =  -log10((1:nn)/(nn+1))
-targetpt <- mutate(targetpt,exp=xx,obs=-log10(pval),group="target")
-nn <- dim(bkgdpt)[[1]]
-xx =  -log10((1:nn)/(nn+1))
-bkgdpt <- mutate(bkgdpt,exp=xx,obs=-log10(pval),group="bkgd")
-  
-all <- rbind(transpt,targetpt,bkgdpt)
-
-#cap at 30
-all30 <- mutate(all,obs=ifelse(obs>30,30,obs))
-
-eff30 <- arrange(all30, effect_size)
-
-all30_g <- mutate(all30,cohort="GIANT Height")
-```
 
 #### Paper Figure
-```{r,fig.width=7.5,fig.height=4}
-b30 <- rbind(all30_uk,all30_g) %>% 
-  mutate(group=factor(group,levels=c("bkgd","trans","target"),labels=c("background","trans-acting","target")))
-fig4 <- ggplot(b30,aes(x=exp,y=obs,col=group)) + geom_point(size=1,shape=1) + facet_wrap(~cohort) +
+```{r,fig.width=7.5,fig.height=15}
+ukheight <- defgroups("50_Standing_height_ukbiobank_Px_DGN-WB_results_2018-06-06.txt.gz", "UKB Height")
+giantheight <- defgroups("GIANT_HEIGHT_meta-gwas_Px_DGN-WB_results_2018-06-07.txt.gz", "GIANT Height")
+rbc <- defgroups("Astle_et_al_2016_Red_blood_cell_count_meta-gwas_Px_DGN-WB_results_2018-06-08.txt.gz", "UKB-INTERVAL RBC Count")
+wbc <- defgroups("Astle_et_al_2016_White_blood_cell_count_meta-gwas_Px_DGN-WB_results_2018-06-08.txt.gz", "UKB-INTERVAL WBC Count")
+ibsle <- defgroups("IMMUNOBASE_Systemic_lupus_erythematosus_hg19_meta-gwas_Px_DGN-WB_results_2018-06-08.txt.gz", "IMMUNOBASE SLE")
+uksle <- defgroups("20002_1381_Non_cancer_illness_code_self_reported_systemic_lupus_erythematosis_or_sle_ukbiobank_Px_DGN-WB_results_2018-06-06.txt.gz", "UKB self-reported SLE")
+gabasth <- defgroups("GABRIEL_Asthma_meta-gwas_Px_DGN-WB_results_2018-06-08.txt.gz", "GABRIEL Asthma")
+ukasth <- defgroups("20002_1111_Non_cancer_illness_code_self_reported_asthma_ukbiobank_Px_DGN-WB_results_2018-06-06.txt.gz", "UKB self-reported Asthma")
+
+
+b30 <- rbind(ukheight,giantheight,rbc,wbc,ibsle,uksle,gabasth,ukasth) %>% 
+  mutate(group=factor(group,levels=c("bkgd","trans","target"),labels=c("background","trans-acting","target"))) %>%
+  mutate(cohort=factor(cohort,levels = c("GIANT Height","UKB-INTERVAL RBC Count",  "IMMUNOBASE SLE","GABRIEL Asthma", "UKB Height", "UKB-INTERVAL WBC Count", "UKB self-reported SLE", "UKB self-reported Asthma")))
+
+fig4 <- ggplot(b30,aes(x=exp,y=obs,col=group)) + geom_point(size=1,shape=1) + 
+  facet_wrap(~cohort, scales = "free",nrow=2) +
   geom_abline(slope=1,intercept = 0) + labs(x=expression(paste('Expected ',-log[10],' ',P)),
   y=expression(paste('Observed ',-log[10],' ',P)),col="Gene Group") +
   theme(plot.title = element_text(size = 10)) + #scale_color_viridis(discrete=TRUE,option="plasma",end=0.8) + 
-  theme_bw(12) + theme(legend.position = c(0.01,0.99),legend.justification = c(0,1),legend.text=element_text(size=8),legend.title=element_text(size=8)) + scale_color_manual(values=c("gray","navy","orange"))
+  theme_bw(12) + theme(legend.position = "bottom",legend.text=element_text(size=10),legend.title=element_text(size=10)) + scale_color_manual(values=c("gray","navy","orange"))
 print(fig4)
 
 table(filter(b30,cohort=="GIANT Height")$group)
-table(filter(b30,cohort=="UK Biobank Height")$group)
+table(filter(b30,cohort=="UKB Height")$group)
+table(filter(b30,cohort=="UKB-INTERVAL RBC Count")$group)
+table(filter(b30,cohort=="UKB-INTERVAL WBC Count")$group)
+table(filter(b30,cohort=="IMMUNOBASE SLE")$group)
+table(filter(b30,cohort=="UKB self-reported SLE")$group)
+table(filter(b30,cohort=="GABRIEL Asthma")$group)
+table(filter(b30,cohort=="UKB self-reported Asthma")$group)
 
-png(filename=summ.dir %&% 'paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.png',width = 600, height = 300)
+png(filename=summ.dir %&% 'paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.png',width = 1000, height = 500)
 fig4
 dev.off()
 
-pdf(file=summ.dir %&% 'paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.pdf',width = 6, height = 3)
+pdf(file=summ.dir %&% 'paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.pdf',width = 10, height = 5)
 fig4
 dev.off()
 
-tiff(filename=summ.dir %&% "paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.tiff", width = 6, height = 3, units = 'in', res = 300, compression = 'lzw')
+tiff(filename=summ.dir %&% "paper_figures_2018-10-26/Fig5_gene2pheno_height_QQ.tiff", width = 10, height = 5, units = 'in', res = 300, compression = 'lzw')
 fig4
 dev.off()
 ```
