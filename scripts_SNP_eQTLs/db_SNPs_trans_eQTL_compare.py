@@ -5,8 +5,9 @@ Created on Tue Jan 08 14:47:20 2019
 @author: Angela Andaleon (aandaleon@luc.edu)
 """
 
-import numpy as np
+#import numpy as np
 import sqlite3
+#import stats
 import pandas as pd
 import re
 pd.options.mode.chained_assignment = None
@@ -37,6 +38,7 @@ db_SNPs_trans_eQTLGen = pd.merge(db_SNPs, trans_eQTLGen_FDR_05, how = "outer", o
 db_SNPs_trans_eQTLGen_noNA = db_SNPs_trans_eQTLGen.dropna() #drop SNPs that didn't overlap
 db_SNPs_trans_eQTLGen_noNA = db_SNPs_trans_eQTLGen_noNA[["rsid", "rsid_chr", "rsid_pos", "GTEx_gene", "GTEx_tissue", "eQTLGen_gene_chr", "eQTLGen_gene_pos", "eQTLGen_gene", "eQTLGen_gene_symbol", "eQTLGen_P", "eQTLGen_FDR"]]
 db_SNPs_trans_eQTLGen_noNA.to_csv("db_SNPs_trans_eQTLGen.csv", index = False)
+#db_SNPs_trans_eQTLGen_noNA = pd.read_csv("db_SNPs_trans_eQTLGen.csv")
 print("Completed writing .db SNP and trans-eQTL overlap to db_SNPs_trans_eQTLGen.csv.")
 db_SNPs_trans_eQTLGen_obsgene_predgene = db_SNPs_trans_eQTLGen_noNA[["GTEx_gene", "eQTLGen_gene", "rsid"]] #these genes have a cis-eQTL in a .db gene that acts as a trans-eQTL to another gene
 db_SNPs_trans_eQTLGen_obsgene_predgene = db_SNPs_trans_eQTLGen_obsgene_predgene.rename(index = str, columns = {"GTEx_gene": "predgene", "eQTLGen_gene": "obsgene", "rsid": "rsid"})
@@ -55,6 +57,7 @@ WHLBLD.columns = ['predgene', 'predname', 'predChr', 'predS1', 'predS2', 'obsgen
 WHLBLD_trans_eQTL = pd.merge(WHLBLD, db_SNPs_trans_eQTLGen_obsgene_predgene, how = "left", on = ["predgene", "obsgene"]).drop_duplicates() #force trans-eQTLGen results to order of WHLBLD
 WHLBLD_trans_eQTL["trans_eQTL_in_eQTLGen"].fillna("No", inplace = True) #if there's no matching in trans-eQTLGen
 WHLBLD_trans_eQTL = WHLBLD_trans_eQTL.drop(labels = "rsid", axis = 1).drop_duplicates() #drop SNP column and collapse duplicates
+#WHLBLD_trans_eQTL = pd.merge(WHLBLD_trans_eQTL, cis_eQTL, on = ["rsid", "predgene"], how = "left")
 WHLBLD_trans_eQTL.to_csv("WHLBLD_trans_eQTL.csv", index = False, na_rep = "NA")
 print("Completed writing WHLBLD trans-PX and trans-eQTLGen overlapping results to WHLBLD_trans_eQTL.csv")
 
@@ -64,31 +67,51 @@ MultiXcan.columns = ['predgene', 'predname', 'predChr', 'predS1', 'predS2', 'obs
 MultiXcan_trans_eQTL = pd.merge(MultiXcan, db_SNPs_trans_eQTLGen_obsgene_predgene, how = "left", on = ["predgene", "obsgene"]).drop_duplicates() #force trans-eQTLGen results to order of WHLBLD
 MultiXcan_trans_eQTL["trans_eQTL_in_eQTLGen"].fillna("No", inplace = True) #if there's no matching in trans-eQTLGen
 MultiXcan_trans_eQTL = MultiXcan_trans_eQTL.drop(labels = "rsid", axis = 1).drop_duplicates() #drop SNP column and collapse duplicates
+#MultiXcan_trans_eQTL = pd.merge(MultiXcan_trans_eQTL, cis_eQTL, on = ["rsid", "predgene"], how = "left")
 MultiXcan_trans_eQTL.to_csv("MultiXcan_trans_eQTL.csv", index = False, na_rep = "NA")
 print("Completed writing MultiXcan trans-PX and trans-eQTLGen overlapping results to MultiXcan_trans_eQTL.csv")
 
 #Recreate Table S3 - Trans-acting/target gene pairs from FHS MulTiXcan (FDR < 0.05) that were previously identified as trans-eQTLs (FDR < 0.05) in whole blood in Westra et al. (https://molgenis58.target.rug.nl/bloodeqtlbrowser/)
-#\textit{trans}-eQTLs within 1Mb of our PrediXcan and MulTiXcan trans-acting genes with the same target genes are shown in Table S3. 
+#\textit{trans}-eQTLs in the .db files of our PrediXcan and MulTiXcan trans-acting genes with the same target genes are shown in Table S3. 
 #db_SNPs = pd.read_csv("db_SNPs.txt")
 #okay so WHLBLD has predgene and obsgene pairs
 #and trans_eQTLGen_FDR_05 has SNP and obsgene pairs
 #match on: Westra.GENEname == obsname; Westra.SNPchr == predChr
     #and then restrict Westra.SNPpos to - 1Mb of predS1 and + 1 Mb of predS2
-trans_eQTLGen_FDR_05.columns = ['eQTLGen_P', 'rsid', 'predChr', 'rsid_pos', 'Zscore', 'A1', 'A0', 'obsgene', 'eQTLGen_gene_symbol', 'eQTLGen_gene_chr', 'eQTLGen_gene_pos', 'eQTLGen_nr_cohorts', 'eQTLGen_nr_samples', 'eQTLGen_FDR']
-WHLBLD_match_eQTLGen = pd.merge(WHLBLD, trans_eQTLGen_FDR_05, on = ["predChr", "obsgene"])
-WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen.rsid_pos <= (WHLBLD_match_eQTLGen.predS1 - 1000000), ['rsid_pos']] = None #keep if w/in +/- 1 Mb https://stackoverflow.com/questions/19226488/change-one-value-based-on-another-value-in-pandas
-WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen.rsid_pos >= (WHLBLD_match_eQTLGen.predS2 + 1000000), ['rsid_pos']] = None
-WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen[np.isfinite(WHLBLD_match_eQTLGen['rsid_pos'])] #keep SNPs that pass
-WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen[["eQTLGen_P", "eQTLGen_FDR", "rsid", "predChr", "rsid_pos", "eQTLGen_gene_chr", "eQTLGen_gene_pos", "eQTLGen_gene_symbol", "eQTLGen_FDR", "predgene", "predname", "predS1", "obsgene", "obsname", "obsS1", "obsS2", "FHS_pval", "FHS_FDR", "DGN_pval"]] #keep important cols.
-WHLBLD_match_eQTLGen = pd.merge(WHLBLD_match_eQTLGen, cis_eQTL, on = ["rsid", "predgene"])
-WHLBLD_match_eQTLGen.to_csv("WHLBLD_match_eQTLGen.csv", index = False)
+trans_eQTLGen_FDR_05.columns = ['eQTLGen_trans_P', 'rsid', 'predChr', 'rsid_pos', 'Zscore', 'A1', 'A0', 'obsgene', 'eQTLGen_gene_symbol', 'eQTLGen_gene_chr', 'eQTLGen_gene_pos', 'eQTLGen_nr_cohorts', 'eQTLGen_nr_samples', 'eQTLGen_trans_FDR']
 
-MultiXcan_match_eQTLGen = pd.merge(MultiXcan, trans_eQTLGen_FDR_05, on = ["predChr", "obsgene"])
-MultiXcan_match_eQTLGen.loc[MultiXcan_match_eQTLGen.rsid_pos <= (MultiXcan_match_eQTLGen.predS1 - 1000000), ['rsid_pos']] = None #keep if w/in +/- 1 Mb https://stackoverflow.com/questions/19226488/change-one-value-based-on-another-value-in-pandas
-MultiXcan_match_eQTLGen.loc[MultiXcan_match_eQTLGen.rsid_pos >= (MultiXcan_match_eQTLGen.predS2 + 1000000), ['rsid_pos']] = None
-MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen[np.isfinite(MultiXcan_match_eQTLGen['rsid_pos'])] #keep SNPs that pass
-MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen[["eQTLGen_P", "eQTLGen_FDR", "rsid", "predChr", "rsid_pos", "eQTLGen_gene_chr", "eQTLGen_gene_pos", "eQTLGen_gene_symbol", "eQTLGen_FDR", "predgene", "predname", "predS1", "obsgene", "obsname", "obsS1", "obsS2", "FHS_pval", "FHS_FDR", "DGN_pval"]]
-MultiXcan_match_eQTLGen = pd.merge(MultiXcan_match_eQTLGen, cis_eQTL, on = ["rsid", "predgene"])
-MultiXcan_match_eQTLGen.to_csv("MultiXcan_match_eQTLGen.csv", index = False)
+#subset SNPs on WHLBLD to just those on db_SNPs
+WHLBLD_match_eQTLGen = pd.merge(WHLBLD, db_SNPs_trans_eQTLGen_obsgene_predgene, on = ["predgene", "obsgene"], how = "left")
+WHLBLD_match_eQTLGen = pd.merge(WHLBLD_match_eQTLGen, cis_eQTL, on = ["rsid", "predgene"], how = "left")
+WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen.sort_values('eQTLGen_cis_P').drop_duplicates(subset = ['predname', 'obsname'], keep = "first") # https://stackoverflow.com/questions/32093829/pythonpandas-removing-duplicates-based-on-two-columns-keeping-row-with-max-va
+WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen.drop(labels = "trans_eQTL_in_eQTLGen", axis = 1).drop(labels = "trans_eQTL_also_cis_eQTL", axis = 1)
+
+''' messed up
+WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen["eQTLGen_cis_FDR"] >= 0, "eQTLGen_cis_FDR"] = "Yes" #has trans-eQTL that's also cis-eQTL #https://stackoverflow.com/questions/31511997/pandas-dataframe-replace-all-values-in-a-column-based-on-condition
+WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen["eQTLGen_cis_P"] >= 0, "eQTLGen_cis_P"] = "Yes" #has trans-eQTL that's also cis-eQTL #https://stackoverflow.com/questions/31511997/pandas-dataframe-replace-all-values-in-a-column-based-on-condition
+WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen.fillna("No") #no cis-eQTL
+
+#remove rsid and collapse gene pairs
+WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen.drop(labels = "rsid", axis = 1).drop(labels = "rsid_pos", axis = 1).drop(labels = "A1", axis = 1).drop(labels = "A0", axis = 1).drop(labels = "eQTLGen_cis_P", axis = 1)
+WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen.rename(columns = {"eQTLGen_cis_FDR":"trans_eQTL_is_cis_eQTL"})
+#WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen.sort_values(["predname", "obsname", "trans_eQTL_is_cis_eQTL"], axis = 1)
+WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen.sort_values('trans_eQTL_is_cis_eQTL').drop_duplicates(subset = ['predname', 'obsgene'], keep = "last") # https://stackoverflow.com/questions/32093829/pythonpandas-removing-duplicates-based-on-two-columns-keeping-row-with-max-va
+#Old: 1 Mb
+#WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen.rsid_pos <= (WHLBLD_match_eQTLGen.predS1 - 1000000), ['rsid_pos']] = None #keep if w/in +/- 1 Mb https://stackoverflow.com/questions/19226488/change-one-value-based-on-another-value-in-pandas
+#WHLBLD_match_eQTLGen.loc[WHLBLD_match_eQTLGen.rsid_pos >= (WHLBLD_match_eQTLGen.predS2 + 1000000), ['rsid_pos']] = None
+#WHLBLD_match_eQTLGen = WHLBLD_match_eQTLGen[np.isfinite(WHLBLD_match_eQTLGen['rsid_pos'])] #keep SNPs that pass
+'''
+WHLBLD_match_eQTLGen.to_csv("WHLBLD_match_eQTLGen.csv", index = False, na_rep = "NA")
+
+MultiXcan_match_eQTLGen = pd.merge(MultiXcan, db_SNPs_trans_eQTLGen_obsgene_predgene, on = ["predgene", "obsgene"], how = "left")
+MultiXcan_match_eQTLGen = pd.merge(MultiXcan_match_eQTLGen, cis_eQTL, on = ["rsid", "predgene"], how = "left")
+MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen.sort_values('eQTLGen_cis_P').drop_duplicates(subset = ['predname', 'obsname'], keep = "first") # https://stackoverflow.com/questions/32093829/pythonpandas-removing-duplicates-based-on-two-columns-keeping-row-with-max-va
+MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen.drop(labels = "trans_eQTL_in_eQTLGen", axis = 1).drop(labels = "trans_eQTL_also_cis_eQTL", axis = 1)
+#Old: 1 Mb
+#MultiXcan_match_eQTLGen.loc[MultiXcan_match_eQTLGen.rsid_pos <= (MultiXcan_match_eQTLGen.predS1 - 1000000), ['rsid_pos']] = None #keep if w/in +/- 1 Mb https://stackoverflow.com/questions/19226488/change-one-value-based-on-another-value-in-pandas
+#MultiXcan_match_eQTLGen.loc[MultiXcan_match_eQTLGen.rsid_pos >= (MultiXcan_match_eQTLGen.predS2 + 1000000), ['rsid_pos']] = None
+#MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen[np.isfinite(MultiXcan_match_eQTLGen['rsid_pos'])] #keep SNPs that pass
+#MultiXcan_match_eQTLGen = MultiXcan_match_eQTLGen[["eQTLGen_trans_P", "eQTLGen_trans_FDR", "rsid", "predChr", "rsid_pos", "eQTLGen_gene_chr", "eQTLGen_gene_pos", "eQTLGen_gene_symbol", "predgene", "predname", "predS1", "obsgene", "obsname", "obsS1", "obsS2", "FHS_pval", "FHS_FDR", "DGN_pval", "eQTLGen_cis_P", "eQTLGen_cis_FDR"]] #keep important cols.
+MultiXcan_match_eQTLGen.to_csv("MultiXcan_match_eQTLGen.csv", index = False, na_rep = "NA")
 print("Completed comparing trans-acting/target gene pairs b/w trans-PX and trans-eQTLGen.")
 
