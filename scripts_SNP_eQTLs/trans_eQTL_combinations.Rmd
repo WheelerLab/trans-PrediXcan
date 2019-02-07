@@ -1,0 +1,85 @@
+---
+title: "trans_eQTL_combinations"
+author: "Angela Andaleon"
+date: "2/7/2019"
+output:
+pdf_document: default
+html_document: default
+---
+  
+#tests how often the gene pairs w/ trans-eQTLs occur by chance
+```{R MultiXcan}
+library(data.table)
+library(dplyr)
+library(tidyr)
+set.seed(1000)
+setwd("/home/angela/trans_px/chance_proportions/")
+"%&%" = function(a, b) paste(a, b, sep = "")
+
+db_SNPs_trans_eQTLGen <- fread("db_SNPs_trans_eQTLGen.csv")
+cis_eQTLGen_FDR_05 <- fread("cis-eQTLGen_FDR_0.05_SNPs_only.txt", header = F)$V1
+GTExWB_pred <- fread("FHS_GTExWB_pred_genelist.txt", stringsAsFactors = F)  
+Multi_pred <- fread("FHS_Multi_pred_genelist.txt", stringsAsFactors = F)
+obs <- fread("FHS_obs_genelist.txt", stringsAsFactors = F)
+S1_WHLBLD_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S1_WHLBLD_trans_eQTL.csv")
+S1_WHLBLD_trans_eQTL <- S1_WHLBLD_trans_eQTL %>% dplyr::select(predgene, obsgene)
+colnames(S1_WHLBLD_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
+S3_MultiXcan_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S3_MultiXcan_trans_eQTL.csv")
+S3_MultiXcan_trans_eQTL <- S3_MultiXcan_trans_eQTL %>% dplyr::select(predgene, obsgene)
+colnames(S3_MultiXcan_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
+#take random samples of predicted and observed gene lists and see if they have trans-eQTLs and if those trans-eQTLs are also cis-eQTLs
+
+#MultiXcan
+sample <- crossing(Multi_pred$pred, obs$obs)
+colnames(sample) <- c("GTEx_gene", "eQTLGen_gene")
+colnames(Multi_pred) <- c("GTEx_gene", "GTEx_gene_chr")
+colnames(obs) <- c("eQTLGen_gene", "eQTLGen_gene_chr")
+sample <- left_join(sample, Multi_pred)
+sample <- left_join(sample, obs)
+sample <- subset(sample, GTEx_gene_chr != eQTLGen_gene_chr) 
+
+sample$GTEx_gene_chr <- NULL
+sample$eQTLGen_gene_chr <- NULL
+overlap_samples <- dplyr::inner_join(sample, db_SNPs_trans_eQTLGen, by = c("GTEx_gene", "eQTLGen_gene")) #whats the overlap between randomized sample and trans-eQTLGen?
+overlap_samples <- dplyr::anti_join(overlap_samples, S3_MultiXcan_trans_eQTL, by = c("GTEx_gene", "eQTLGen_gene")) #whats the overlap between randomized sample and trans-eQTLGen?
+print(nrow(overlap_samples) %&% "/" %&% nrow(sample) %&% " pairs have a trans-eQTL for MultiXcan.")
+```
+
+
+```{R GTExWB}
+library(data.table)
+library(dplyr)
+library(tidyr)
+set.seed(1000)
+setwd("/home/angela/trans_px/chance_proportions/")
+"%&%" = function(a, b) paste(a, b, sep = "")
+
+db_SNPs_trans_eQTLGen <- fread("db_SNPs_trans_eQTLGen.csv")
+cis_eQTLGen_FDR_05 <- fread("cis-eQTLGen_FDR_0.05_SNPs_only.txt", header = F)$V1
+GTExWB_pred <- fread("FHS_GTExWB_pred_genelist.txt", stringsAsFactors = F)  
+Multi_pred <- fread("FHS_Multi_pred_genelist.txt", stringsAsFactors = F)
+obs <- fread("FHS_obs_genelist.txt", stringsAsFactors = F)
+S1_WHLBLD_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S1_WHLBLD_trans_eQTL.csv")
+S1_WHLBLD_trans_eQTL <- S1_WHLBLD_trans_eQTL %>% dplyr::select(predgene, obsgene)
+colnames(S1_WHLBLD_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
+S3_MultiXcan_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S3_MultiXcan_trans_eQTL.csv")
+S3_MultiXcan_trans_eQTL <- S3_MultiXcan_trans_eQTL %>% dplyr::select(predgene, obsgene)
+colnames(S3_MultiXcan_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
+#take random samples of predicted and observed gene lists and see if they have trans-eQTLs and if those trans-eQTLs are also cis-eQTLs
+
+#GTExWB
+db_SNPs_trans_eQTLGen <- subset(db_SNPs_trans_eQTLGen, GTEx_tissue == "Whole_Blood") #restrict to just WB models
+sample <- crossing(GTExWB_pred$pred, obs$obs)
+colnames(sample) <- c("GTEx_gene", "eQTLGen_gene")
+colnames(GTExWB_pred) <- c("GTEx_gene", "GTEx_gene_chr")
+colnames(obs) <- c("eQTLGen_gene", "eQTLGen_gene_chr")
+sample <- left_join(sample, GTExWB_pred)
+sample <- left_join(sample, obs)
+sample <- subset(sample, GTEx_gene_chr != eQTLGen_gene_chr) 
+
+sample$GTEx_gene_chr <- NULL
+sample$eQTLGen_gene_chr <- NULL
+overlap_samples <- dplyr::inner_join(sample, db_SNPs_trans_eQTLGen, by = c("GTEx_gene", "eQTLGen_gene")) #whats the overlap between randomized sample and trans-eQTLGen?
+overlap_samples <- dplyr::anti_join(overlap_samples, S1_WHLBLD_trans_eQTL, by = c("GTEx_gene", "eQTLGen_gene")) #whats the overlap between randomized sample and trans-eQTLGen?
+print(nrow(overlap_samples) %&% "/" %&% nrow(sample) %&% " pairs have a trans-eQTL for GTEx WB")
+```
