@@ -128,8 +128,8 @@ $(document).ready(function () {
 </div>
 
 
-<div id="tests-how-often-the-gene-pairs-w-trans-eqtls-occur-by-chance" class="section level1">
-<h1>tests how often the gene pairs w/ trans-eQTLs occur by chance</h1>
+<div id="load-in-all-the-data" class="section level1">
+<h1>Load in all the data</h1>
 <pre class="r"><code>library(data.table)
 library(dplyr)</code></pre>
 <pre><code>## 
@@ -144,31 +144,35 @@ library(dplyr)</code></pre>
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
 <pre class="r"><code>library(tidyr)
-set.seed(1000)
+#set.seed(1000)
 setwd(&quot;/home/angela/trans_px/chance_proportions/&quot;)
 &quot;%&amp;%&quot; = function(a, b) paste(a, b, sep = &quot;&quot;)
 
 db_SNPs_trans_eQTLGen &lt;- fread(&quot;db_SNPs_trans_eQTLGen.csv&quot;)
 cis_eQTLGen_FDR_05 &lt;- fread(&quot;cis-eQTLGen_FDR_0.05_SNPs_only.txt&quot;, header = F)$V1
-GTExWB_pred &lt;- fread(&quot;FHS_GTExWB_pred_genelist.txt&quot;, stringsAsFactors = F)  
-Multi_pred &lt;- fread(&quot;FHS_Multi_pred_genelist.txt&quot;, stringsAsFactors = F)
-obs &lt;- fread(&quot;FHS_obs_genelist.txt&quot;, stringsAsFactors = F)
+
 S1_WHLBLD_trans_eQTL &lt;- fread(&quot;/home/angela/trans_px/sig_trans_eQTL/S1_WHLBLD_trans_eQTL.csv&quot;)
 S1_WHLBLD_trans_eQTL &lt;- S1_WHLBLD_trans_eQTL %&gt;% dplyr::select(predgene, obsgene)
 colnames(S1_WHLBLD_trans_eQTL) &lt;- c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)
 S3_MultiXcan_trans_eQTL &lt;- fread(&quot;/home/angela/trans_px/sig_trans_eQTL/S3_MultiXcan_trans_eQTL.csv&quot;)
 S3_MultiXcan_trans_eQTL &lt;- S3_MultiXcan_trans_eQTL %&gt;% dplyr::select(predgene, obsgene)
-colnames(S3_MultiXcan_trans_eQTL) &lt;- c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)
-#take random samples of predicted and observed gene lists and see if they have trans-eQTLs and if those trans-eQTLs are also cis-eQTLs
+colnames(S3_MultiXcan_trans_eQTL) &lt;- c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)</code></pre>
+</div>
+<div id="multixcan" class="section level1">
+<h1>MultiXcan</h1>
+<pre class="r"><code>Multi_pred &lt;- fread(&quot;/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_predgenes_DatasetS2_trans-MultiXcan_2019-02-12.txt&quot;, stringsAsFactors = F, header = F)
+Multi_pred &lt;- Multi_pred[3:nrow(Multi_pred),] #there's two headers for some reason
+Multi_obs &lt;- fread(&quot;/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_predgenes_DatasetS2_trans-MultiXcan_2019-02-12.txt&quot;, stringsAsFactors = F, header = F)
+colnames(Multi_pred) &lt;- c(&quot;pred&quot;, &quot;pred_chr&quot;)
+colnames(Multi_obs) &lt;- c(&quot;obs&quot;, &quot;obs_chr&quot;)
 
-#MultiXcan
-sample &lt;- crossing(Multi_pred$pred, obs$obs)
+sample &lt;- crossing(Multi_pred$pred, Multi_obs$obs)
 colnames(sample) &lt;- c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)
 colnames(Multi_pred) &lt;- c(&quot;GTEx_gene&quot;, &quot;GTEx_gene_chr&quot;)
-colnames(obs) &lt;- c(&quot;eQTLGen_gene&quot;, &quot;eQTLGen_gene_chr&quot;)
+colnames(Multi_obs) &lt;- c(&quot;eQTLGen_gene&quot;, &quot;eQTLGen_gene_chr&quot;)
 sample &lt;- left_join(sample, Multi_pred)</code></pre>
 <pre><code>## Joining, by = &quot;GTEx_gene&quot;</code></pre>
-<pre class="r"><code>sample &lt;- left_join(sample, obs)</code></pre>
+<pre class="r"><code>sample &lt;- left_join(sample, Multi_obs)</code></pre>
 <pre><code>## Joining, by = &quot;eQTLGen_gene&quot;</code></pre>
 <pre class="r"><code>sample &lt;- subset(sample, GTEx_gene_chr != eQTLGen_gene_chr) 
 
@@ -177,36 +181,24 @@ sample$eQTLGen_gene_chr &lt;- NULL
 overlap_samples &lt;- dplyr::inner_join(sample, db_SNPs_trans_eQTLGen, by = c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)) #whats the overlap between randomized sample and trans-eQTLGen?
 overlap_samples &lt;- dplyr::anti_join(overlap_samples, S3_MultiXcan_trans_eQTL, by = c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)) #whats the overlap between randomized sample and trans-eQTLGen?
 print(nrow(overlap_samples) %&amp;% &quot;/&quot; %&amp;% nrow(sample) %&amp;% &quot; pairs have a trans-eQTL for MultiXcan.&quot;)</code></pre>
-<pre><code>## [1] &quot;137440/134402955 pairs have a trans-eQTL for MultiXcan.&quot;</code></pre>
-<pre class="r"><code>library(data.table)
-library(dplyr)
-library(tidyr)
-set.seed(1000)
-setwd(&quot;/home/angela/trans_px/chance_proportions/&quot;)
-&quot;%&amp;%&quot; = function(a, b) paste(a, b, sep = &quot;&quot;)
+<pre><code>## [1] &quot;168893/224057701 pairs have a trans-eQTL for MultiXcan.&quot;</code></pre>
+</div>
+<div id="gtexwb" class="section level1">
+<h1>GTExWB</h1>
+<pre class="r"><code>GTExWB_pred &lt;- fread(&quot;/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_predgenes_DatasetS1_trans-PrediXcan_whole_blood_2019-02-12.txt&quot;, stringsAsFactors = F, header = F)  
+GTExWB_pred &lt;- GTExWB_pred[3:nrow(GTExWB_pred),] #there's two headers for some reason
+GTExWB_obs &lt;- fread(&quot;/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_obsgenes_DatasetS1_trans-PrediXcan_whole_blood_2019-02-12.txt&quot;, stringsAsFactors = F, header = F)
+colnames(GTExWB_pred) &lt;- c(&quot;pred&quot;, &quot;pred_chr&quot;)
+colnames(GTExWB_obs) &lt;- c(&quot;obs&quot;, &quot;obs_chr&quot;)
 
-db_SNPs_trans_eQTLGen &lt;- fread(&quot;db_SNPs_trans_eQTLGen.csv&quot;)
-cis_eQTLGen_FDR_05 &lt;- fread(&quot;cis-eQTLGen_FDR_0.05_SNPs_only.txt&quot;, header = F)$V1
-GTExWB_pred &lt;- fread(&quot;FHS_GTExWB_pred_genelist.txt&quot;, stringsAsFactors = F)  
-Multi_pred &lt;- fread(&quot;FHS_Multi_pred_genelist.txt&quot;, stringsAsFactors = F)
-obs &lt;- fread(&quot;FHS_obs_genelist.txt&quot;, stringsAsFactors = F)
-S1_WHLBLD_trans_eQTL &lt;- fread(&quot;/home/angela/trans_px/sig_trans_eQTL/S1_WHLBLD_trans_eQTL.csv&quot;)
-S1_WHLBLD_trans_eQTL &lt;- S1_WHLBLD_trans_eQTL %&gt;% dplyr::select(predgene, obsgene)
-colnames(S1_WHLBLD_trans_eQTL) &lt;- c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)
-S3_MultiXcan_trans_eQTL &lt;- fread(&quot;/home/angela/trans_px/sig_trans_eQTL/S3_MultiXcan_trans_eQTL.csv&quot;)
-S3_MultiXcan_trans_eQTL &lt;- S3_MultiXcan_trans_eQTL %&gt;% dplyr::select(predgene, obsgene)
-colnames(S3_MultiXcan_trans_eQTL) &lt;- c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)
-#take random samples of predicted and observed gene lists and see if they have trans-eQTLs and if those trans-eQTLs are also cis-eQTLs
-
-#GTExWB
 db_SNPs_trans_eQTLGen &lt;- subset(db_SNPs_trans_eQTLGen, GTEx_tissue == &quot;Whole_Blood&quot;) #restrict to just WB models
-sample &lt;- crossing(GTExWB_pred$pred, obs$obs)
+sample &lt;- crossing(GTExWB_pred$pred, GTExWB_obs$obs)
 colnames(sample) &lt;- c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)
 colnames(GTExWB_pred) &lt;- c(&quot;GTEx_gene&quot;, &quot;GTEx_gene_chr&quot;)
-colnames(obs) &lt;- c(&quot;eQTLGen_gene&quot;, &quot;eQTLGen_gene_chr&quot;)
+colnames(GTExWB_obs) &lt;- c(&quot;eQTLGen_gene&quot;, &quot;eQTLGen_gene_chr&quot;)
 sample &lt;- left_join(sample, GTExWB_pred)</code></pre>
 <pre><code>## Joining, by = &quot;GTEx_gene&quot;</code></pre>
-<pre class="r"><code>sample &lt;- left_join(sample, obs)</code></pre>
+<pre class="r"><code>sample &lt;- left_join(sample, GTExWB_obs)</code></pre>
 <pre><code>## Joining, by = &quot;eQTLGen_gene&quot;</code></pre>
 <pre class="r"><code>sample &lt;- subset(sample, GTEx_gene_chr != eQTLGen_gene_chr) 
 
@@ -215,7 +207,7 @@ sample$eQTLGen_gene_chr &lt;- NULL
 overlap_samples &lt;- dplyr::inner_join(sample, db_SNPs_trans_eQTLGen, by = c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)) #whats the overlap between randomized sample and trans-eQTLGen?
 overlap_samples &lt;- dplyr::anti_join(overlap_samples, S1_WHLBLD_trans_eQTL, by = c(&quot;GTEx_gene&quot;, &quot;eQTLGen_gene&quot;)) #whats the overlap between randomized sample and trans-eQTLGen?
 print(nrow(overlap_samples) %&amp;% &quot;/&quot; %&amp;% nrow(sample) %&amp;% &quot; pairs have a trans-eQTL for GTEx WB&quot;)</code></pre>
-<pre><code>## [1] &quot;6427/46172853 pairs have a trans-eQTL for GTEx WB&quot;</code></pre>
+<pre><code>## [1] &quot;3547/26446479 pairs have a trans-eQTL for GTEx WB&quot;</code></pre>
 </div>
 
 

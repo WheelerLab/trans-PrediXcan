@@ -7,35 +7,40 @@ pdf_document: default
 html_document: default
 ---
   
-#tests how often the gene pairs w/ trans-eQTLs occur by chance
-```{R MultiXcan}
+#Load in all the data
+```{R load_in}
 library(data.table)
 library(dplyr)
 library(tidyr)
-set.seed(1000)
+#set.seed(1000)
 setwd("/home/angela/trans_px/chance_proportions/")
 "%&%" = function(a, b) paste(a, b, sep = "")
 
 db_SNPs_trans_eQTLGen <- fread("db_SNPs_trans_eQTLGen.csv")
 cis_eQTLGen_FDR_05 <- fread("cis-eQTLGen_FDR_0.05_SNPs_only.txt", header = F)$V1
-GTExWB_pred <- fread("FHS_GTExWB_pred_genelist.txt", stringsAsFactors = F)  
-Multi_pred <- fread("FHS_Multi_pred_genelist.txt", stringsAsFactors = F)
-obs <- fread("FHS_obs_genelist.txt", stringsAsFactors = F)
+
 S1_WHLBLD_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S1_WHLBLD_trans_eQTL.csv")
 S1_WHLBLD_trans_eQTL <- S1_WHLBLD_trans_eQTL %>% dplyr::select(predgene, obsgene)
 colnames(S1_WHLBLD_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
 S3_MultiXcan_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S3_MultiXcan_trans_eQTL.csv")
 S3_MultiXcan_trans_eQTL <- S3_MultiXcan_trans_eQTL %>% dplyr::select(predgene, obsgene)
 colnames(S3_MultiXcan_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
-#take random samples of predicted and observed gene lists and see if they have trans-eQTLs and if those trans-eQTLs are also cis-eQTLs
+```
 
 #MultiXcan
-sample <- crossing(Multi_pred$pred, obs$obs)
+```{R MultiXcan}
+Multi_pred <- fread("/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_predgenes_DatasetS2_trans-MultiXcan_2019-02-12.txt", stringsAsFactors = F, header = F)
+Multi_pred <- Multi_pred[3:nrow(Multi_pred),] #there's two headers for some reason
+Multi_obs <- fread("/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_predgenes_DatasetS2_trans-MultiXcan_2019-02-12.txt", stringsAsFactors = F, header = F)
+colnames(Multi_pred) <- c("pred", "pred_chr")
+colnames(Multi_obs) <- c("obs", "obs_chr")
+
+sample <- crossing(Multi_pred$pred, Multi_obs$obs)
 colnames(sample) <- c("GTEx_gene", "eQTLGen_gene")
 colnames(Multi_pred) <- c("GTEx_gene", "GTEx_gene_chr")
-colnames(obs) <- c("eQTLGen_gene", "eQTLGen_gene_chr")
+colnames(Multi_obs) <- c("eQTLGen_gene", "eQTLGen_gene_chr")
 sample <- left_join(sample, Multi_pred)
-sample <- left_join(sample, obs)
+sample <- left_join(sample, Multi_obs)
 sample <- subset(sample, GTEx_gene_chr != eQTLGen_gene_chr) 
 
 sample$GTEx_gene_chr <- NULL
@@ -45,36 +50,21 @@ overlap_samples <- dplyr::anti_join(overlap_samples, S3_MultiXcan_trans_eQTL, by
 print(nrow(overlap_samples) %&% "/" %&% nrow(sample) %&% " pairs have a trans-eQTL for MultiXcan.")
 ```
 
-
-```{R GTExWB}
-library(data.table)
-library(dplyr)
-library(tidyr)
-set.seed(1000)
-setwd("/home/angela/trans_px/chance_proportions/")
-"%&%" = function(a, b) paste(a, b, sep = "")
-
-db_SNPs_trans_eQTLGen <- fread("db_SNPs_trans_eQTLGen.csv")
-cis_eQTLGen_FDR_05 <- fread("cis-eQTLGen_FDR_0.05_SNPs_only.txt", header = F)$V1
-GTExWB_pred <- fread("FHS_GTExWB_pred_genelist.txt", stringsAsFactors = F)  
-Multi_pred <- fread("FHS_Multi_pred_genelist.txt", stringsAsFactors = F)
-obs <- fread("FHS_obs_genelist.txt", stringsAsFactors = F)
-S1_WHLBLD_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S1_WHLBLD_trans_eQTL.csv")
-S1_WHLBLD_trans_eQTL <- S1_WHLBLD_trans_eQTL %>% dplyr::select(predgene, obsgene)
-colnames(S1_WHLBLD_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
-S3_MultiXcan_trans_eQTL <- fread("/home/angela/trans_px/sig_trans_eQTL/S3_MultiXcan_trans_eQTL.csv")
-S3_MultiXcan_trans_eQTL <- S3_MultiXcan_trans_eQTL %>% dplyr::select(predgene, obsgene)
-colnames(S3_MultiXcan_trans_eQTL) <- c("GTEx_gene", "eQTLGen_gene")
-#take random samples of predicted and observed gene lists and see if they have trans-eQTLs and if those trans-eQTLs are also cis-eQTLs
-
 #GTExWB
+```{R GTExWB}
+GTExWB_pred <- fread("/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_predgenes_DatasetS1_trans-PrediXcan_whole_blood_2019-02-12.txt", stringsAsFactors = F, header = F)  
+GTExWB_pred <- GTExWB_pred[3:nrow(GTExWB_pred),] #there's two headers for some reason
+GTExWB_obs <- fread("/home/wheelerlab3/trans-px-h2/tested_lists_2019-02-12/tested_obsgenes_DatasetS1_trans-PrediXcan_whole_blood_2019-02-12.txt", stringsAsFactors = F, header = F)
+colnames(GTExWB_pred) <- c("pred", "pred_chr")
+colnames(GTExWB_obs) <- c("obs", "obs_chr")
+
 db_SNPs_trans_eQTLGen <- subset(db_SNPs_trans_eQTLGen, GTEx_tissue == "Whole_Blood") #restrict to just WB models
-sample <- crossing(GTExWB_pred$pred, obs$obs)
+sample <- crossing(GTExWB_pred$pred, GTExWB_obs$obs)
 colnames(sample) <- c("GTEx_gene", "eQTLGen_gene")
 colnames(GTExWB_pred) <- c("GTEx_gene", "GTEx_gene_chr")
-colnames(obs) <- c("eQTLGen_gene", "eQTLGen_gene_chr")
+colnames(GTExWB_obs) <- c("eQTLGen_gene", "eQTLGen_gene_chr")
 sample <- left_join(sample, GTExWB_pred)
-sample <- left_join(sample, obs)
+sample <- left_join(sample, GTExWB_obs)
 sample <- subset(sample, GTEx_gene_chr != eQTLGen_gene_chr) 
 
 sample$GTEx_gene_chr <- NULL
